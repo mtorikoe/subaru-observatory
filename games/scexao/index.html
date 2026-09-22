@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SCExAO Direct Imaging — Subaru Observatory</title>
+<link rel="stylesheet" href="../../css/shared.css">
+<link rel="stylesheet" href="css/scexao.css">
+</head>
+<body>
+
+<!-- ATTRACT -->
+<div id="attract" class="overlay-screen" style="background:rgba(7,20,25,.97);">
+  <div class="subtag">SUBARU TELESCOPE · SCExAO · DIRECT IMAGING · H-BAND</div>
+  <h1>Image the Hidden Planet</h1>
+  <p>Direct imaging is the most challenging way to find an exoplanet. First correct the blurring atmosphere in two stages, then block the star's light — until a hidden companion appears.</p>
+  <div class="steps-row">
+    <div class="step-pill"><span>①</span>Target a star</div>
+    <div class="step-pill"><span>②</span>AO3K — initial correction</div>
+    <div class="step-pill"><span>③</span>SCExAO — high-order AO</div>
+    <div class="step-pill"><span>④</span>Coronagraph mask</div>
+    <div class="step-pill"><span>⑤</span>Lyot stop</div>
+    <div class="step-pill"><span>⑥</span>Click the planet</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;">
+    <div class="pulse-dot"></div>
+    Touch or click anywhere to begin
+  </div>
+</div>
+
+<!-- RESULT OVERLAY -->
+<div id="result-overlay" class="overlay-screen" style="background:rgba(7,20,25,.92);display:none;">
+  <div id="result-ball" class="result-ball"></div>
+  <h2 id="result-title"></h2>
+  <p id="result-msg"></p>
+  <div id="result-card"></div>
+  <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn-ghost" onclick="document.getElementById('result-overlay').style.display='none'">Keep exploring this field</button>
+    <button class="btn-primary" onclick="nextField()">New star field</button>
+    <!-- Home link as button so it always works regardless of server root -->
+    <button class="btn-ghost" onclick="window.location.href='../../index.html'">Home</button>
+  </div>
+</div>
+
+<!-- HEADER / NAV -->
+<nav class="site-nav">
+  <div class="logo">SCExAO / <span>SUBARU</span> · Direct Imaging</div>
+  <div class="nav-links">
+    <!-- Use onclick so the path resolves relative to the document, not the server root -->
+    <a href="javascript:void(0)" onclick="window.location.href='../../index.html'">Home</a>
+    <a href="javascript:void(0)" class="active">SCExAO Game</a>
+  </div>
+  <div style="font-size:10px;color:var(--dim);">H-band · 1.6 µm · Near-Infrared</div>
+</nav>
+
+<!-- PHASE BAR — 6 steps -->
+<div class="phase-bar">
+  <div class="phase-step" id="ph0">① Target</div>
+  <div class="phase-step" id="ph1">② AO3K</div>
+  <div class="phase-step" id="ph2">③ SCExAO</div>
+  <div class="phase-step" id="ph3">④ Coronagraph</div>
+  <div class="phase-step" id="ph4">⑤ Lyot stop</div>
+  <div class="phase-step" id="ph5">⑥ Detect</div>
+</div>
+
+<main>
+  <!-- Left: star field -->
+  <div id="field-panel">
+    <canvas id="sfCvs"></canvas>
+    <canvas id="starCvs"></canvas>
+    <div id="reticle"></div>
+  </div>
+
+  <!-- Middle: wavefront monitor -->
+  <div id="wf-panel">
+    <div class="panel-label">Wavefront Error Monitor</div>
+    <canvas id="wfCvs"></canvas>
+  </div>
+
+  <!-- Right: IR imaging view -->
+  <div id="view-panel">
+    <div class="panel-label">SCExAO Imaging View — IR False Color</div>
+    <canvas id="viewCvs"></canvas>
+    <div id="view-status">Select a star from the field to begin.</div>
+  </div>
+</main>
+
+<!-- INSTRUMENT CONTROLS FOOTER — 4 columns for 4 instrument steps -->
+<footer class="instr-footer" style="grid-template-columns:1fr 1fr 1fr 1fr;">
+
+  <!-- AO3K -->
+  <div class="instr-col">
+    <div class="instr-title">① AO3K — Facility AO</div>
+    <button class="instr-btn" id="btn-ao3k" disabled onclick="runAO3K()">
+      Run AO3K correction
+    </button>
+    <div class="instr-desc">
+      Subaru's 188-actuator facility adaptive optics system. Performs initial wavefront correction so the PSF is concentrated enough for coronagraphy.
+    </div>
+  </div>
+
+  <!-- SCExAO -->
+  <div class="instr-col">
+    <div class="instr-title">② SCExAO — High-Order AO</div>
+    <button class="instr-btn" id="btn-scexao" disabled onclick="runSCExAO()">
+      Run SCExAO correction
+    </button>
+    <div class="ao-stages">
+      <div class="ao-stage" id="ao-s1">Wavefront sensor — reading residuals</div>
+      <div class="ao-stage" id="ao-s2">Control system — computing correction</div>
+      <div class="ao-stage" id="ao-s3">Deformable mirror — 2000 actuators</div>
+    </div>
+  </div>
+
+  <!-- Coronagraph -->
+  <div class="instr-col">
+    <div class="instr-title">③ Coronagraph Mask</div>
+    <button class="instr-btn" id="btn-coro" disabled onclick="applyCoronagraph()">
+      Apply coronagraph
+    </button>
+    <div class="instr-desc">
+      PIAA focal-plane mask placed over the now-sharp PSF core. Blocks direct starlight by ~10⁴×. Only effective after AO sharpening.
+    </div>
+  </div>
+
+  <!-- Lyot stop -->
+  <div class="instr-col">
+    <div class="instr-title">④ Lyot Stop</div>
+    <button class="instr-btn" id="btn-lyot" disabled onclick="applyLyot()">
+      Insert Lyot stop
+    </button>
+    <div class="instr-desc">
+      Pupil-plane annular mask suppressing diffracted light from the coronagraph edges. Final step before companion detection.
+    </div>
+  </div>
+
+</footer>
+
+<!-- Scripts: load order is critical -->
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/starfield.js"></script>
+<script src="js/render.js"></script>
+<script src="js/game.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,79 @@
+/* ============================================================
+   shared.css — design tokens and base styles for all pages
+   Subaru Observatory Outreach Suite
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a1e24;--deep:#071419;--panel:#12353f;--p2:#1a4452;
+  --mid:#244b6d;--rim:#2e6080;--accent:#7ecfed;--gold:#f0c060;
+  --green:#5ec47a;--red:#e05555;--text:#d8eef6;--muted:#7aadbe;--dim:#3a7088;
+}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:'Times New Roman',Times,serif;
+  user-select:none;
+}
+a{color:inherit;text-decoration:none;}
+
+/* ── SHARED NAV ── */
+.site-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 24px;border-bottom:1px solid var(--p2);
+  background:var(--panel);gap:12px;flex-wrap:wrap;
+}
+.site-nav .logo{font-size:12px;color:var(--muted);letter-spacing:.06em;}
+.site-nav .logo span{color:var(--accent);font-weight:bold;}
+.nav-links{display:flex;gap:12px;}
+.nav-links a{
+  font-size:11px;color:var(--muted);padding:4px 10px;
+  border-radius:3px;border:1px solid transparent;transition:all .2s;
+}
+.nav-links a:hover{border-color:var(--p2);color:var(--text);}
+.nav-links a.active{border-color:var(--accent);color:var(--accent);}
+
+/* ── SHARED BUTTONS ── */
+.btn-primary{
+  padding:7px 18px;background:var(--mid);border:1px solid var(--rim);
+  border-radius:3px;color:var(--text);font-family:'Times New Roman',serif;
+  font-size:12px;cursor:pointer;transition:background .2s;
+}
+.btn-primary:hover{background:var(--rim);}
+.btn-ghost{
+  padding:5px 14px;background:transparent;border:1px solid var(--dim);
+  border-radius:3px;color:var(--muted);font-family:'Times New Roman',serif;
+  font-size:11px;cursor:pointer;transition:border-color .2s,color .2s;
+}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── ATTRACT / OVERLAY shared ── */
+.overlay-screen{
+  position:fixed;inset:0;z-index:100;
+  display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;text-align:center;padding:36px;
+}
+.subtag{
+  font-size:11px;color:var(--dim);letter-spacing:.14em;
+  border:1px solid var(--p2);padding:4px 14px;border-radius:2px;
+}
+.steps-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;max-width:520px;}
+.step-pill{
+  background:var(--panel);border:1px solid var(--p2);
+  border-radius:2px;padding:4px 11px;font-size:10px;color:var(--muted);
+}
+.step-pill span{color:var(--accent);margin-right:3px;}
+.pulse-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--accent);
+  animation:pulse 1.6s ease-in-out infinite;flex-shrink:0;
+}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.3;transform:scale(.6)}}
+
+/* ── PHASE BAR ── */
+.phase-bar{display:flex;border-bottom:1px solid var(--p2);background:var(--deep);}
+.phase-step{
+  flex:1;padding:5px 6px;font-size:10px;letter-spacing:.06em;
+  color:var(--dim);border-right:1px solid var(--p2);
+  text-align:center;transition:color .3s,background .3s;
+}
+.phase-step:last-child{border-right:none;}
+.phase-step.active{color:var(--accent);background:var(--panel);}
+.phase-step.done{color:var(--green);background:#0d2a1a;}

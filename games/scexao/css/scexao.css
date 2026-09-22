@@ -1,0 +1,121 @@
+/* ============================================================
+   scexao.css — layout and styles specific to the SCExAO game
+   ============================================================ */
+body{
+  height:100vh;
+  display:grid;
+  grid-template-rows:auto auto 1fr auto;
+  overflow:hidden;
+}
+
+/* ── MAIN 3-COLUMN LAYOUT ── */
+main{
+  display:grid;
+  grid-template-columns:1fr 200px 250px;
+  overflow:hidden;
+}
+
+/* ── STAR FIELD (left) ── */
+#field-panel{
+  position:relative;overflow:hidden;background:#000;
+  border-right:1px solid var(--p2);cursor:crosshair;
+}
+#field-panel::after{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 55%,rgba(0,0,0,.7)100%);
+}
+#sfCvs{position:absolute;inset:0;}
+#starCvs{position:absolute;inset:0;width:100%;height:100%;}
+#reticle{
+  position:absolute;width:44px;height:44px;
+  border:1px solid rgba(126,207,237,.6);border-radius:50%;
+  pointer-events:none;display:none;
+  transform:translate(-50%,-50%);
+}
+#reticle::before,#reticle::after{content:'';position:absolute;background:rgba(126,207,237,.4);}
+#reticle::before{width:1px;height:100%;left:50%;}
+#reticle::after{height:1px;width:100%;top:50%;}
+
+/* ── WAVEFRONT MONITOR (middle) ── */
+#wf-panel{
+  background:var(--deep);border-right:1px solid var(--p2);
+  display:flex;flex-direction:column;overflow:hidden;
+}
+.panel-label{
+  font-size:9px;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase;padding:7px 10px 4px;
+  border-bottom:1px solid var(--p2);flex-shrink:0;
+}
+#wfCvs{flex:1;display:block;width:100%;}
+
+/* ── IMAGING VIEW (right) ── */
+#view-panel{
+  display:flex;flex-direction:column;
+  background:var(--panel);overflow:hidden;
+}
+#viewCvs{flex:1;display:block;width:100%;background:#1a0030;cursor:default;}
+#viewCvs.clickable{cursor:crosshair;}
+#view-status{
+  font-size:10px;color:var(--muted);padding:6px 10px;
+  border-top:1px solid var(--p2);min-height:34px;line-height:1.5;flex-shrink:0;
+}
+
+/* ── INSTRUMENT FOOTER ── */
+footer.instr-footer{
+  padding:0;background:var(--deep);border-top:1px solid var(--p2);
+  display:grid;grid-template-columns:1fr 1fr 1fr 1fr;
+  min-height:110px;
+}
+.instr-col{
+  padding:10px 14px;border-right:1px solid var(--p2);
+  display:flex;flex-direction:column;gap:5px;
+}
+.instr-col:last-child{border-right:none;}
+.instr-title{
+  font-size:9px;letter-spacing:.1em;color:var(--muted);
+  text-transform:uppercase;
+}
+.instr-btn{
+  padding:7px 12px;border-radius:3px;font-family:'Times New Roman',serif;
+  font-size:11px;cursor:pointer;transition:all .2s;text-align:left;
+  border:1px solid var(--dim);background:transparent;color:var(--muted);
+}
+.instr-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
+.instr-btn:disabled{opacity:.3;cursor:not-allowed;}
+.instr-btn.active{border-color:var(--green);color:var(--green);background:#0d2a1a;}
+.instr-btn.running{
+  border-color:var(--gold);color:var(--gold);background:#1a1200;
+  animation:btnpulse .9s ease-in-out infinite;
+}
+@keyframes btnpulse{0%,100%{opacity:1}50%{opacity:.55}}
+
+.ao-stages{display:flex;flex-direction:column;gap:3px;}
+.ao-stage{
+  font-size:9px;color:var(--dim);padding:2px 6px;border-radius:2px;
+  border:1px solid transparent;transition:all .3s;
+}
+.ao-stage.active{color:var(--gold);border-color:#664a20;background:#1a0d00;}
+.ao-stage.done{color:var(--green);border-color:#1a4a1a;background:#0a1a0a;}
+.instr-desc{font-size:9px;color:var(--dim);line-height:1.5;}
+
+/* ── RESULT OVERLAY ── */
+#result-overlay{
+  background:rgba(7,20,25,.92);
+  display:none;
+}
+#result-overlay h2{font-size:24px;color:var(--gold);font-weight:normal;}
+#result-overlay p{font-size:13px;color:var(--muted);max-width:360px;line-height:1.6;}
+.result-ball{width:76px;height:76px;border-radius:50%;margin:0 auto;}
+#result-card{
+  background:var(--panel);border:1px solid var(--p2);
+  border-radius:4px;padding:12px 18px;font-size:11px;
+  color:var(--muted);line-height:1.85;max-width:320px;
+}
+
+/* ── ATTRACT ── */
+#attract{background:rgba(7,20,25,.97);}
+#attract h1{
+  font-size:clamp(22px,3.5vw,44px);color:var(--accent);
+  font-weight:normal;line-height:1.2;
+}
+#attract p{font-size:13px;color:var(--muted);max-width:460px;line-height:1.75;}
