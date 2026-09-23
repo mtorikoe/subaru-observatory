@@ -3,133 +3,229 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Subaru Observatory — Outreach Suite</title>
-<link rel="stylesheet" href="css/shared.css">
+<title>Subaru Observatory</title>
 <style>
-body { min-height:100vh; display:flex; flex-direction:column; }
-.hero {
-  flex:1; display:flex; flex-direction:column; align-items:center;
-  justify-content:flex-start; padding:40px 24px 24px; gap:28px; text-align:center;
-}
-.hero-tag  { font-size:11px; color:var(--dim); letter-spacing:.18em; }
-.hero h1   { font-size:clamp(24px,3.5vw,46px); color:var(--accent); font-weight:normal; }
-.hero p    { font-size:13px; color:var(--muted); max-width:480px; line-height:1.8; }
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Audience selector ── */
-.audience-row {
-  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
-}
-.audience-btn {
-  padding:6px 18px; border-radius:20px; font-family:'Times New Roman',serif;
-  font-size:11px; cursor:pointer; border:1px solid var(--p2);
-  background:transparent; color:var(--muted); transition:all .2s;
-}
-.audience-btn.selected, .audience-btn:hover {
-  border-color:var(--accent); color:var(--accent); background:var(--panel);
+:root {
+  --bg:     #ffffff;
+  --panel:  #f0f4f8;
+  --border: #c8d8e8;
+  --accent: #1a5fa8;
+  --text:   #111827;
+  --muted:  #4b5563;
+  --dim:    #6b7280;
+  --green:  #1a7a32;
+  --gold:   #b07800;
 }
 
-/* ── Game cards ── */
-.game-section { display:flex; flex-direction:column; gap:10px; max-width:820px; width:100%; }
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Times New Roman', Times, serif;
+  /* Background image — replace assets/bg.jpg with your image file */
+  background-image: url('assets/bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* Frosted overlay so text stays readable over any background image */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(255,255,255,0.82);
+  z-index: 0;
+}
+
+nav, main, footer { position: relative; z-index: 1; }
+
+/* ── NAV ── */
+nav {
+  display: flex;
+  align-items: center;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.90);
+  backdrop-filter: blur(6px);
+}
+.logo {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: .02em;
+}
+
+/* ── HERO ── */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px 48px;
+  gap: 36px;
+  text-align: center;
+}
+
+.hero-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .20em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-size: clamp(32px, 5vw, 60px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.15;
+  max-width: 700px;
+}
+
+.hero-sub {
+  font-size: 17px;
+  color: var(--muted);
+  max-width: 520px;
+  line-height: 1.8;
+  font-weight: 400;
+}
+
+/* ── SECTION LABEL ── */
 .section-label {
-  font-size:10px; letter-spacing:.12em; color:var(--muted);
-  text-transform:uppercase; text-align:left; padding:0 4px;
-  border-left:2px solid var(--accent); padding-left:8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+  text-align: left;
+  align-self: flex-start;
 }
-.game-grid {
-  display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
-  gap:12px;
-}
-.game-card {
-  background:var(--panel); border:1px solid var(--p2); border-radius:5px;
-  padding:20px; display:flex; flex-direction:column; gap:8px;
-  transition:border-color .25s, transform .2s; color:inherit;
-  text-decoration:none;
-}
-.game-card:hover { border-color:var(--accent); transform:translateY(-2px); }
-.game-card.coming-soon { opacity:.4; cursor:default; pointer-events:none; }
-.card-icon    { font-size:26px; }
-.card-method  { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
-.card-title   { font-size:14px; color:var(--text); }
-.card-level   { font-size:9px; color:var(--dim); }
-.card-desc    { font-size:11px; color:var(--muted); line-height:1.65; }
-.card-tag     { margin-top:auto; font-size:9px; letter-spacing:.06em;
-  color:var(--dim); border-top:1px solid var(--p2); padding-top:7px; }
-.card-tag.ready { color:var(--green); }
 
-footer { padding:10px 24px; background:var(--panel); border-top:1px solid var(--p2);
-  font-size:10px; color:var(--dim); display:flex; justify-content:space-between;
-  flex-wrap:wrap; gap:8px; }
+/* ── CARD GRID — 2 cards centered ── */
+.game-grid {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 860px;
+  width: 100%;
+}
+
+.game-card {
+  background: rgba(255,255,255,0.92);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 380px;
+  max-width: 100%;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
+  backdrop-filter: blur(4px);
+}
+.game-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(26,95,168,0.12);
+}
+
+.card-icon   { font-size: 32px; }
+.card-method {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.card-title  { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1.3; }
+.card-desc   { font-size: 14px; color: var(--muted); line-height: 1.75; flex: 1; }
+.card-tag    {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+/* ── FOOTER ── */
+footer {
+  padding: 14px 32px;
+  background: rgba(255,255,255,0.88);
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--dim);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 </style>
 </head>
 <body>
 
-<nav class="site-nav">
-  <div class="logo">Subaru Observatory · <span>Outreach Suite</span></div>
-  <div class="nav-links">
-    <a href="index.html" class="active">Home</a>
-    <a href="games/scexao/index.html">SCExAO Game</a>
-    <a href="games/professional/index.html">Pro Simulator</a>
-  </div>
+<nav>
+  <div class="logo">Subaru Observatory</div>
 </nav>
 
-<div class="hero">
-  <div class="hero-tag">SUBARU TELESCOPE · MAUNA KEA, HAWAII · 4,205 m</div>
-  <h1>How Do Astronomers Find Planets?</h1>
-  <p>Each experience below is built around a real instrument at Subaru Telescope. Choose by audience level — or try both.</p>
+<main>
+  <div class="hero-tag">Subaru Telescope · Mauna Kea, Hawaii · 4,205 m</div>
+  <h1 class="hero-title">How Do Astronomers Find Planets?</h1>
+  <p class="hero-sub">Each experience below is built around a real instrument at Subaru Telescope.</p>
 
-  <!-- ── BEGINNER SECTION ── -->
-  <div class="game-section">
-    <div class="section-label">For younger audiences &amp; general public</div>
-    <div class="game-grid">
+  <!-- Section label -->
+  <div class="section-label">Beginner</div>
 
-      <a class="game-card" href="games/scexao/index.html">
-        <div class="card-icon">🔭</div>
-        <div class="card-method">Direct Imaging</div>
-        <div class="card-title">SCExAO Planet Hunter</div>
-        <div class="card-level">● Beginner · 2–5 min</div>
-        <div class="card-desc">Block the star's blinding light step by step — coronagraph, Lyot stop, adaptive optics — until a hidden planet appears in the infrared image.</div>
-        <div class="card-tag ready">▶ Play now</div>
-      </a>
+  <!-- Two cards centered -->
+  <div class="game-grid">
 
-      <div class="game-card coming-soon">
-        <div class="card-icon">📉</div>
-        <div class="card-method">Transit Photometry</div>
-        <div class="card-title">Light Curve Detective</div>
-        <div class="card-level">● Beginner · 2–4 min</div>
-        <div class="card-desc">Watch four wavelength channels scan a star field and identify the tiny brightness dip that reveals a transiting planet.</div>
-        <div class="card-tag">Coming soon</div>
-      </div>
+    <a class="game-card" href="games/scexao/index.html">
+      <div class="card-icon">🔭</div>
+      <div class="card-method">Direct Imaging</div>
+      <div class="card-title">Adaptive Optics Star Hunting</div>
+      <div class="card-desc">Block the star's blinding light step by step — coronagraph, Lyot stop, adaptive optics — until a hidden planet appears in the infrared image.</div>
+      <div class="card-tag">▶ Play now</div>
+    </a>
 
+    <a class="game-card" href="games/professional/index.html">
+      <div class="card-icon">⚙️</div>
+      <div class="card-method">Direct Imaging</div>
+      <div class="card-title">Subaru Observatory Simulator</div>
+      <div class="card-desc">Operate the actual Subaru telescope pipeline — open the dome, target a real star, run AO3K → SCExAO → CHARIS → VAMPIRES using terminal commands. Monitor humidity, earn score, unlock real images.</div>
+      <div class="card-tag">▶ Launch simulator</div>
+    </a>
+
+    <!--
+    <div class="game-card" style="opacity:.4;pointer-events:none;">
+      <div class="card-icon">📉</div>
+      <div class="card-method">Transit Photometry</div>
+      <div class="card-title">Light Curve Detective</div>
+      <div class="card-desc">Watch four wavelength channels scan a star field and identify the tiny brightness dip that reveals a transiting planet.</div>
+      <div class="card-tag" style="color:var(--dim);">Coming soon</div>
     </div>
-  </div>
 
-  <!-- ── PROFESSIONAL SECTION ── -->
-  <div class="game-section">
-    <div class="section-label">For students, educators &amp; aspiring astronomers</div>
-    <div class="game-grid">
-
-      <a class="game-card" href="games/professional/index.html">
-        <div class="card-icon">⚙️</div>
-        <div class="card-method">Full Pipeline Simulation</div>
-        <div class="card-title">Subaru Observatory Professional Simulator</div>
-        <div class="card-level">●●● Advanced · 10–20 min</div>
-        <div class="card-desc">Operate the actual Subaru telescope pipeline — open the dome, target a real star, run AO3K → SCExAO → CHARIS → VAMPIRES using authentic terminal commands. Monitor humidity, earn score, unlock real images.</div>
-        <div class="card-tag ready">▶ Launch simulator</div>
-      </a>
-
-      <div class="game-card coming-soon">
-        <div class="card-icon">🌊</div>
-        <div class="card-method">Radial Velocity</div>
-        <div class="card-title">HDS Spectrograph Doppler Lab</div>
-        <div class="card-level">●● Intermediate · 5–10 min</div>
-        <div class="card-desc">Measure the Doppler wobble of a star as an invisible planet tugs it back and forth. Decode the radial velocity curve to find the planet's mass and orbit.</div>
-        <div class="card-tag">Coming soon</div>
-      </div>
-
+    <div class="game-card" style="opacity:.4;pointer-events:none;">
+      <div class="card-icon">🌊</div>
+      <div class="card-method">Radial Velocity</div>
+      <div class="card-title">HDS Spectrograph Doppler Lab</div>
+      <div class="card-desc">Measure the Doppler wobble of a star as an invisible planet tugs it back and forth. Decode the radial velocity curve to find the planet's mass and orbit.</div>
+      <div class="card-tag" style="color:var(--dim);">Coming soon</div>
     </div>
-  </div>
+    -->
 
-</div>
+  </div>
+</main>
 
 <footer>
   <span>Subaru Telescope · National Astronomical Observatory of Japan · Mauna Kea, Hawaii</span>

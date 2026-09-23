@@ -14,37 +14,40 @@ function updateRightPanel() {
   drawSaturation();
 }
 
-// ── Supercontinuum laser (19 lines) ──────────────────────
+// ── Supercontinuum laser — 19 horizontal prism lines ─────
 function drawLaserBar() {
   const cvs = document.getElementById('laser-cvs');
   if (!cvs) return;
-  const W = cvs.width = Math.round(cvs.getBoundingClientRect().width) || 300;
-  const H = cvs.height = parseInt(cvs.getAttribute("height")) || cvs.offsetHeight || 36;
+  const W = cvs.width  = Math.round(cvs.getBoundingClientRect().width)  || 300;
+  const H = cvs.height = parseInt(cvs.getAttribute('height')) || cvs.offsetHeight || 60;
   const ctx = cvs.getContext('2d');
-  ctx.fillStyle = '#000'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H);
 
   const cameraOn = G.vampireHAlpha || G.vampireContinuum || G.vampireSplit;
   const hasHII   = G.targetStar && G.targetStar.hasHII;
   const nLines   = 19;
-  const spacing  = W / (nLines + 1);
-  const dotY     = H * .45;
+  const lineH    = 2;                        // thickness of each prism line
+  const gap      = (H - nLines * lineH) / (nLines + 1);  // even vertical spacing
+  const dotX     = W * 0.62;                // x position of HII dot (same for all)
 
   for (let i = 0; i < nLines; i++) {
-    const x = spacing * (i+1);
-    // wavelength gradient: blue→green→red
-    const hue = 240 - i*(240/nLines); // 240=blue, 0=red
-    const col = cameraOn ? `hsl(${hue},90%,60%)` : '#1a4452';
-    ctx.strokeStyle = col; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(x,4); ctx.lineTo(x,H-4); ctx.stroke();
+    const y = gap + i * (lineH + gap);
+    // wavelength hue: top lines = blue (short λ), bottom = red (long λ)
+    const hue = 240 - i * (240 / (nLines - 1));  // 240 → 0
+    const col = cameraOn ? `hsl(${hue},90%,62%)` : '#1a4a5a';
 
-    // dot on same x-axis for HII region
+    // horizontal prism line spanning full width
+    ctx.fillStyle = col;
+    ctx.fillRect(4, y, W - 8, lineH);
+
+    // dot at fixed x position for HII region targets
     if (cameraOn && hasHII) {
-      ctx.beginPath(); ctx.arc(x, dotY, 2.5, 0, Math.PI*2);
-      ctx.fillStyle = col; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(dotX, y + lineH / 2, 3, 0, Math.PI * 2);
+      ctx.fillStyle = col;
+      ctx.fill();
     }
   }
-  ctx.fillStyle='#3a7088'; ctx.font='8px Times New Roman';
-  ctx.fillText('Supercontinuum calibration laser · 19 channels', 4, H-3);
 }
 
 // ── VCAM1 ─────────────────────────────────────────────────

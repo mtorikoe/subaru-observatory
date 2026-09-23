@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Subaru Observatory Professional Simulator</title>
+<title>Subaru Observatory Simulator</title>
 <link rel="stylesheet" href="../../css/shared.css">
 <link rel="stylesheet" href="css/pro.css">
 </head>
@@ -43,12 +43,12 @@
 
 <!-- ── HEADER NAV ── -->
 <nav class="site-nav">
-  <div class="logo">Subaru Observatory · <span>Professional Simulator</span></div>
+  <div class="logo">Subaru Observatory · <span>Simulator</span></div>
   <div class="nav-links">
     <a href="javascript:void(0)" onclick="window.location.href='../../index.html'">Home</a>
-    <a href="javascript:void(0)" class="active">Pro Sim</a>
+    <a href="javascript:void(0)" class="active">Simulator</a>
   </div>
-  <div style="font-size:10px;color:var(--dim);">SCExAO / CHARIS / VAMPIRES · H-band · Mauna Kea 4205 m</div>
+  <div style="font-size:11px;font-weight:600;color:var(--dim);">SCExAO / CHARIS / VAMPIRES · H-band · Mauna Kea 4205 m</div>
 </nav>
 
 <!-- ══════════════════════════════════════════
@@ -60,6 +60,7 @@
      row2 = terminal (col1+2) baked into left+mid; score in right-col
      ══════════════════════════════════════════ -->
 <div class="pro-layout">
+  <div class="pro-top-row">
 
   <!-- ══ COL 1 — LEFT TABS (spans both rows) ══ -->
   <div class="left-col">
@@ -103,14 +104,67 @@
       <canvas class="tel-canvas" id="telescope-cvs" height="110"></canvas>
       <div class="tab-section-title">360° Sky View</div>
       <canvas class="tel-canvas" id="sky-cvs" height="68"></canvas>
-      <div class="tab-info-block" style="font-size:9px;">
+      <div class="tab-info-block">
         <b>Commands</b><br>
         <code>subaru-telescope-open</code> — open enclosure<br>
         <code>subaru-telescope-target-[name]</code> — slew to star<br>
         <code>subaru-telescope-center-target</code> — fine centering (+score)<br>
         <code>subaru-telescope-camera-ndr</code> — increase sensitivity<br>
-        <code>subaru-telescope-close</code> — shut down &amp; reset<br><br>
-        <b>Targets:</b> gj504 · kappa-and · hr8799 · hd1160 · beta-pic · lkca15 · hip79977 · ab-dor · vhs1256 · 51-eri
+        <code>subaru-telescope-close</code> — shut down &amp; reset
+      </div>
+
+      <div class="tab-section-title">Available Targets</div>
+      <div class="target-grid">
+        <div class="target-card">
+          <div class="target-cmd">gj504</div>
+          <div class="target-name">GJ 504</div>
+          <div class="target-desc">Sun-like star · coldest directly imaged planet, ~3 M<sub>J</sub></div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">kappa-and</div>
+          <div class="target-name">κ Andromedae</div>
+          <div class="target-desc">B-type star · super-Jupiter ~13 M<sub>J</sub> at 55 AU</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">hr8799</div>
+          <div class="target-name">HR 8799</div>
+          <div class="target-desc">A-type star · four directly imaged planets (b,c,d,e)</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">hd1160</div>
+          <div class="target-name">HD 1160</div>
+          <div class="target-desc">A-type star · two brown dwarf companions, key CHARIS target</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">beta-pic</div>
+          <div class="target-name">β Pictoris</div>
+          <div class="target-desc">Young A-type star · β Pic b at ~9 AU, ~13 M<sub>J</sub></div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">lkca15</div>
+          <div class="target-name">LkCa 15</div>
+          <div class="target-desc">T Tauri star · transitional disk with large inner gap</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">hip79977</div>
+          <div class="target-name">HIP 79977</div>
+          <div class="target-desc">F-type star · bright edge-on debris disk in Sco</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">ab-dor</div>
+          <div class="target-name">AB Doradus</div>
+          <div class="target-desc">K-type star · AB Dor C calibrates evolutionary models</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">vhs1256</div>
+          <div class="target-name">VHS 1256</div>
+          <div class="target-desc">Low-mass binary · wide-sep super-Jupiter, methane atm.</div>
+        </div>
+        <div class="target-card">
+          <div class="target-cmd">51-eri</div>
+          <div class="target-name">51 Eridani</div>
+          <div class="target-desc">F-type star · 51 Eri b, ~700 K, one of coldest imaged</div>
+        </div>
       </div>
     </div>
 
@@ -186,17 +240,9 @@
       </div>
     </div>
 
-    <!-- ── TERMINAL lives inside left-col but grows to fill footer row ── -->
-    <div class="terminal-area">
-      <div id="term-output"></div>
-      <div class="term-input-row">
-        <span class="term-prompt">subaru&gt;</span>
-        <input id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus
-               placeholder="type command…">
-      </div>
-    </div>
-
   </div><!-- end left-col -->
+
+  <div class="col-divider" id="div-left-mid"></div>
 
   <!-- ══ COL 2 — MIDDLE MONITORS (row 1 only) ══ -->
   <div class="mid-col">
@@ -226,12 +272,13 @@
     </div>
 
   </div><!-- end mid-col -->
+  <div class="col-divider" id="div-mid-right"></div>
 
-  <!-- ══ COL 3 — RIGHT INSTRUMENT MONITORS (spans rows 1+2) ══ -->
+  <!-- ══ COL 3 — RIGHT INSTRUMENT MONITORS ══ -->
   <div class="right-col">
 
-    <div class="right-lbl">Supercontinuum calibration laser · 19 channels</div>
-    <canvas class="right-canvas" id="laser-cvs" height="34"></canvas>
+    <div class="right-lbl">Supercontinuum calibration laser</div>
+    <canvas class="right-canvas" id="laser-cvs" height="60"></canvas>
 
     <div class="right-row">
       <div class="right-cell">
@@ -271,20 +318,36 @@
       <canvas class="right-canvas" id="flux-cvs" height="56"></canvas>
     </div>
 
-    <!-- Score block pinned to bottom of right-col -->
-    <div class="score-block">
-      <div class="score-display">
-        Score<b id="score-value">0</b>
-      </div>
-      <div style="font-size:9px;color:var(--dim);text-align:center;">
-        Perfect run unlocks<br>real Subaru image
-      </div>
-      <button class="btn-ghost" style="font-size:10px;padding:3px 10px;"
-              onclick="triggerReset()">Reset</button>
-    </div>
-
   </div><!-- end right-col -->
 
+  </div><!-- end pro-top-row -->
+
+  <div class="term-divider" id="div-terminal"></div>
+  <!-- ══ BOT ROW — terminal + score ══ -->
+  <div class="pro-bot-row">
+  <!-- ══ TERMINAL — spans cols 1+2, row 2 ══ -->
+  <div class="terminal-area">
+    <div id="term-output"></div>
+    <div class="term-input-row">
+      <span class="term-prompt">subaru&gt;</span>
+      <input id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus
+             placeholder="type a command… (↑/↓ for history)">
+    </div>
+  </div>
+
+
+
+  <!-- score area -->
+  <div class="score-area">
+    <div class="score-display">Score<b id="score-value">0</b></div>
+    <div style="font-size:11px;color:var(--dim);text-align:center;font-weight:600;">
+      Perfect run unlocks<br>real Subaru image
+    </div>
+    <button class="btn-ghost" style="font-size:11px;padding:4px 12px;"
+            onclick="triggerReset()">Reset</button>
+  </div>
+
+  </div><!-- end pro-bot-row -->
 </div><!-- end pro-layout -->
 
 <!-- Scripts — order matters -->
@@ -296,5 +359,74 @@
 <script src="js/right.js"></script>
 <script src="js/terminal.js"></script>
 <script src="js/game.js"></script>
+
+<script>
+/* ── Column + terminal drag resize ── */
+(function() {
+  const leftCol  = document.querySelector('.left-col');
+  const midCol   = document.querySelector('.mid-col');
+  const rightCol = document.querySelector('.right-col');
+  const botRow   = document.querySelector('.pro-bot-row');
+
+  // ── Drag the border between left-col and mid-col ──
+  function makeDivider(el, onDrag) {
+    if (!el) return;
+    let active = false, startX = 0, startY = 0;
+    el.addEventListener('mousedown', e => {
+      active = true;
+      startX = e.clientX; startY = e.clientY;
+      el.classList.add('dragging');
+      document.body.style.cursor = getComputedStyle(el).cursor;
+      document.body.style.userSelect = 'none';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!active) return;
+      onDrag(e.clientX - startX, e.clientY - startY);
+    });
+    window.addEventListener('mouseup', () => {
+      if (!active) return;
+      active = false;
+      el.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    });
+  }
+
+  // Drag left/mid border: change left-col width
+  let leftW0 = 0;
+  const divLMEl = document.getElementById('div-left-mid');
+  if (divLMEl) {
+    divLMEl.addEventListener('mousedown', () => { leftW0 = leftCol.offsetWidth; });
+    makeDivider(divLMEl, (dx) => {
+      const newW = Math.max(160, Math.min(leftW0 + dx, window.innerWidth * 0.55));
+      leftCol.style.width = newW + 'px';
+    });
+  }
+
+  // Drag right border of mid-col: change right-col width
+  let rightW0 = 0;
+  const divMREl = document.getElementById('div-mid-right');
+  if (divMREl) {
+    divMREl.addEventListener('mousedown', () => { rightW0 = rightCol.offsetWidth; });
+    makeDivider(divMREl, (dx) => {
+      const newW = Math.max(140, Math.min(rightW0 - dx, window.innerWidth * 0.45));
+      rightCol.style.width = newW + 'px';
+    });
+  }
+
+  // ── Drag terminal height ──
+  let termH0 = 0;
+  const divT = document.getElementById('div-terminal');
+  if (divT) {
+    divT.addEventListener('mousedown', () => { termH0 = botRow.offsetHeight; });
+    makeDivider(divT, (dx, dy) => {
+      const newH = Math.max(60, Math.min(termH0 - dy, window.innerHeight * 0.55));
+      botRow.style.height = newH + 'px';
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
