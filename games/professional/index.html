@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Subaru Observatory Professional Simulator</title>
+<link rel="stylesheet" href="../../css/shared.css">
+<link rel="stylesheet" href="css/pro.css">
+</head>
+<body>
+
+<!-- ── GAME OVER ── -->
+<div id="gameover-overlay" class="full-overlay">
+  <h2>⚠ Observation Aborted</h2>
+  <p id="gameover-msg"></p>
+  <button class="btn-primary" onclick="triggerReset()">Reset &amp; Try Again</button>
+  <button class="btn-ghost" onclick="window.location.href='../../index.html'">Back to Home</button>
+</div>
+
+<!-- ── FINAL RESULT ── -->
+<div id="result-overlay" class="full-overlay">
+  <h2>Observation Complete</h2>
+  <div class="result-grid">
+    <div class="result-img-wrap">
+      <img id="result-image" src="" alt="">
+      <div id="result-credit"></div>
+    </div>
+    <div class="result-info">
+      <div id="result-star-name"></div>
+      <div id="result-type"></div>
+      <div id="result-desc"></div>
+      <div id="result-perfect">★ Perfect run — real Subaru image unlocked</div>
+      <div style="font-size:12px;color:var(--muted);">Score: <span id="result-score" style="color:var(--gold);font-size:18px;"></span></div>
+      <div id="result-log"></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;">
+    <button class="btn-ghost" onclick="document.getElementById('result-overlay').style.display='none'">Continue exploring</button>
+    <button class="btn-primary" onclick="triggerReset()">New observation</button>
+    <button class="btn-ghost" onclick="window.location.href='../../index.html'">Home</button>
+  </div>
+</div>
+
+<!-- ── HEADER NAV ── -->
+<nav class="site-nav">
+  <div class="logo">Subaru Observatory · <span>Professional Simulator</span></div>
+  <div class="nav-links">
+    <a href="javascript:void(0)" onclick="window.location.href='../../index.html'">Home</a>
+    <a href="javascript:void(0)" class="active">Pro Sim</a>
+  </div>
+  <div style="font-size:10px;color:var(--dim);">SCExAO / CHARIS / VAMPIRES · H-band · Mauna Kea 4205 m</div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     MASTER LAYOUT
+     col1 (left-col)  = tabs, 1/3 width, rows 1+2
+     col2 (mid-col)   = monitors, 1fr, row 1 only
+     col3 (right-col) = instruments, 300px, rows 1+2
+     row1 = main content
+     row2 = terminal (col1+2) baked into left+mid; score in right-col
+     ══════════════════════════════════════════ -->
+<div class="pro-layout">
+
+  <!-- ══ COL 1 — LEFT TABS (spans both rows) ══ -->
+  <div class="left-col">
+
+    <!-- Tab index bar -->
+    <div class="tab-bar">
+      <button id="tab-btn-env"       onclick="switchTab('env')"       class="tab-active">env</button>
+      <button id="tab-btn-telescope" onclick="switchTab('telescope')">telescope</button>
+      <button id="tab-btn-ao3k"      onclick="switchTab('ao3k')">ao3k</button>
+      <button id="tab-btn-scexao"    onclick="switchTab('scexao')">scexao</button>
+      <button id="tab-btn-charis"    onclick="switchTab('charis')">charis</button>
+      <button id="tab-btn-vampire"   onclick="switchTab('vampire')">vampire</button>
+      <button id="tab-btn-first"     onclick="switchTab('first')">first</button>
+    </div>
+
+    <!-- ── ENV TAB ── -->
+    <div id="tab-env" class="tab-panel tab-active">
+      <div class="tab-section-title">Summit Environment — Mauna Kea 4205 m</div>
+      <div class="hum-indicator safe" id="hum-indicator">✓ Humidity within safe range</div>
+      <div class="chart-wrap">
+        <div class="chart-label">Temperature <span id="temp-current">— °C</span></div>
+        <!-- height attribute prevents CSS-only stretch -->
+        <canvas class="env-chart" id="temp-chart" height="76"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-label">Humidity <span id="hum-current">— %</span></div>
+        <canvas class="env-chart" id="hum-chart" height="76"></canvas>
+        <div style="font-size:9px;color:var(--dim);">Red zone ≥70% — unsafe for observation</div>
+      </div>
+      <div class="tab-info-block">
+        Temperature at the summit typically ranges <b>−5 °C to +8 °C</b> at night.<br>
+        Humidity must stay below <b>70%</b>. If it rises above this with the dome open, mirror coatings can be damaged. Monitor this panel throughout the observation.
+      </div>
+    </div>
+
+    <!-- ── TELESCOPE TAB ── -->
+    <div id="tab-telescope" class="tab-panel">
+      <div class="tab-section-title">Cylindrical Enclosure</div>
+      <canvas class="tel-canvas" id="enclosure-cvs" height="120"></canvas>
+      <div class="tab-section-title">Telescope Mount</div>
+      <canvas class="tel-canvas" id="telescope-cvs" height="110"></canvas>
+      <div class="tab-section-title">360° Sky View</div>
+      <canvas class="tel-canvas" id="sky-cvs" height="68"></canvas>
+      <div class="tab-info-block" style="font-size:9px;">
+        <b>Commands</b><br>
+        <code>subaru-telescope-open</code> — open enclosure<br>
+        <code>subaru-telescope-target-[name]</code> — slew to star<br>
+        <code>subaru-telescope-center-target</code> — fine centering (+score)<br>
+        <code>subaru-telescope-camera-ndr</code> — increase sensitivity<br>
+        <code>subaru-telescope-close</code> — shut down &amp; reset<br><br>
+        <b>Targets:</b> gj504 · kappa-and · hr8799 · hd1160 · beta-pic · lkca15 · hip79977 · ab-dor · vhs1256 · 51-eri
+      </div>
+    </div>
+
+    <!-- ── AO3K TAB ── -->
+    <div id="tab-ao3k" class="tab-panel">
+      <div class="tab-section-title">AO3K — Facility Adaptive Optics</div>
+      <div class="tab-info-block">
+        AO3K is Subaru's upgraded facility AO system with <b>3228 actuators</b>. It provides extreme-AO correction for all instruments on the IR Nasmyth platform: <b>IRCS</b>, <b>IRD</b>, and <b>SCExAO</b>.<br><br>
+        AO3K reduces wavefront error from ~600 nm rms (raw atmosphere) to ~180 nm rms — concentrating the PSF enough for coronagraphy to work.
+      </div>
+      <div class="tab-info-block" style="font-size:9px;">
+        <b>Command</b><br>
+        <code>ao3k-perform</code> — apply correction, update PALILA<br><br>
+        Requires <code>close-adaptive-opetics-loop</code> first.<br>
+        Skipping AO3K reduces image quality and disables the real-image reward.
+      </div>
+    </div>
+
+    <!-- ── SCEXAO TAB ── -->
+    <div id="tab-scexao" class="tab-panel">
+      <div class="tab-section-title">SCExAO — Extreme AO &amp; Coronagraphy</div>
+      <div class="tab-info-block">
+        SCExAO receives the AO3K-corrected beam and applies <b>fine wavefront correction</b> with its 2000-actuator DM, reaching below 30 nm rms.<br><br>
+        It then applies <b>coronagraphy</b> — a PIAA focal-plane mask + Lyot stop — revealing faint companions hidden in stellar glare.
+      </div>
+      <div class="tab-info-block" style="font-size:9px;">
+        <b>Commands</b><br>
+        <code>scexao-pyramid-wave-front-sensor-on</code> — optional hidden bonus<br>
+        <code>scexao-perform-dm</code> — DM correction (must come first)<br>
+        <code>scexao-perform-coronagraph</code> — insert PIAA mask<br>
+        <code>scexao-perform-lyot</code> — insert Lyot stop<br>
+        <code>scexao-auto-complete-perform</code> — shortcut, no bonus<br><br>
+        Coronagraph and Lyot may be done in either order after DM.
+      </div>
+    </div>
+
+    <!-- ── CHARIS TAB ── -->
+    <div id="tab-charis" class="tab-panel">
+      <div class="tab-section-title">CHARIS — Coronagraphic High Angular Resolution IFS</div>
+      <div class="tab-info-block">
+        CHARIS is a lenslet-based cryogenic <b>integral field spectrograph</b> behind SCExAO. It images exoplanets across J+H+K bands (1.15–2.37 µm, R~18) simultaneously, producing a <b>3-D data cube</b>.<br><br>
+        Targets brighter than H~1 require the internal <b>ND3 filter</b>, restricting use to broadband mode.
+      </div>
+      <div class="tab-info-block" style="font-size:9px;">
+        <b>Commands (in order)</b><br>
+        <code>charis-prism-disperse</code> — separate spectral components<br>
+        <code>charis-reconstruct-raw-image</code> — rebuild data cube<br><br>
+        Both steps must complete to unlock the final image.
+      </div>
+    </div>
+
+    <!-- ── VAMPIRE TAB ── -->
+    <div id="tab-vampire" class="tab-panel">
+      <div class="tab-section-title">VAMPIRES — Visible Aperture Masking Polarimetric Imager</div>
+      <div class="tab-info-block">
+        VAMPIRES is a <b>visible-light, dual-camera</b> instrument on the SCExAO platform. It uses non-redundant aperture masking interferometry and polarimetry to image resolved structures at very small separations.
+      </div>
+      <div class="tab-info-block" style="font-size:9px;">
+        <b>Commands</b><br>
+        <code>vampire-split-polarization</code> — both channels simultaneously<br>
+        <code>vampire-h-alpha</code> — Hα channel → VCAM1<br>
+        <code>vampire-continuum</code> — continuum channel → VCAM2<br><br>
+        Use split-polarization, or h-alpha + continuum together. Both approaches are valid.
+      </div>
+    </div>
+
+    <!-- ── FIRST TAB ── -->
+    <div id="tab-first" class="tab-panel">
+      <div class="tab-section-title">FIRST — Fibered Imager for Single Telescope</div>
+      <div class="tab-info-block">
+        FIRST is a fibered aperture masking instrument on the SCExAO platform.<br><br>
+        <span style="color:var(--dim);">This module is planned for a future update.</span>
+      </div>
+    </div>
+
+    <!-- ── TERMINAL lives inside left-col but grows to fill footer row ── -->
+    <div class="terminal-area">
+      <div id="term-output"></div>
+      <div class="term-input-row">
+        <span class="term-prompt">subaru&gt;</span>
+        <input id="term-input" type="text" autocomplete="off" spellcheck="false" autofocus
+               placeholder="type command…">
+      </div>
+    </div>
+
+  </div><!-- end left-col -->
+
+  <!-- ══ COL 2 — MIDDLE MONITORS (row 1 only) ══ -->
+  <div class="mid-col">
+
+    <!-- Top 2/3: PyWFS (left) + DM grid (right) -->
+    <div class="mid-top">
+      <div class="mid-top-cell">
+        <div class="mid-label">PyWFS — 4 pupils</div>
+        <canvas class="mid-canvas" id="pywfs-cvs"></canvas>
+      </div>
+      <div class="mid-top-cell">
+        <div class="mid-label">DM segments (3×4)</div>
+        <canvas class="mid-canvas" id="dm-grid-cvs"></canvas>
+      </div>
+    </div>
+
+    <!-- Bottom 1/3: APAPANE (left) + PALILA (right) -->
+    <div class="mid-bot">
+      <div class="mid-bot-cell">
+        <div class="mid-label">APAPANE</div>
+        <canvas class="mid-canvas" id="apapane-cvs"></canvas>
+      </div>
+      <div class="mid-bot-cell">
+        <div class="mid-label">PALILA</div>
+        <canvas class="mid-canvas" id="palila-cvs"></canvas>
+      </div>
+    </div>
+
+  </div><!-- end mid-col -->
+
+  <!-- ══ COL 3 — RIGHT INSTRUMENT MONITORS (spans rows 1+2) ══ -->
+  <div class="right-col">
+
+    <div class="right-lbl">Supercontinuum calibration laser · 19 channels</div>
+    <canvas class="right-canvas" id="laser-cvs" height="34"></canvas>
+
+    <div class="right-row">
+      <div class="right-cell">
+        <div class="right-lbl">VCAM1</div>
+        <canvas class="right-canvas" id="vcam1-cvs" height="88"></canvas>
+      </div>
+      <div class="right-cell">
+        <div class="right-lbl">VCAM2</div>
+        <canvas class="right-canvas" id="vcam2-cvs" height="88"></canvas>
+      </div>
+    </div>
+
+    <div class="right-row">
+      <div class="right-cell">
+        <div class="right-lbl">Focal 1</div>
+        <canvas class="right-canvas" id="focal1-cvs" height="72"></canvas>
+      </div>
+      <div class="right-cell">
+        <div class="right-lbl">AO Quicklook</div>
+        <canvas class="right-canvas" id="ao-quick-cvs" height="72"></canvas>
+      </div>
+    </div>
+
+    <div class="right-row">
+      <div class="right-cell">
+        <div class="right-lbl">Focal 2</div>
+        <canvas class="right-canvas" id="focal2-cvs" height="72"></canvas>
+      </div>
+      <div class="right-cell">
+        <div class="right-lbl">Saturation</div>
+        <canvas class="right-canvas" id="sat-cvs" height="72"></canvas>
+      </div>
+    </div>
+
+    <div class="right-cell">
+      <div class="right-lbl">Flux</div>
+      <canvas class="right-canvas" id="flux-cvs" height="56"></canvas>
+    </div>
+
+    <!-- Score block pinned to bottom of right-col -->
+    <div class="score-block">
+      <div class="score-display">
+        Score<b id="score-value">0</b>
+      </div>
+      <div style="font-size:9px;color:var(--dim);text-align:center;">
+        Perfect run unlocks<br>real Subaru image
+      </div>
+      <button class="btn-ghost" style="font-size:10px;padding:3px 10px;"
+              onclick="triggerReset()">Reset</button>
+    </div>
+
+  </div><!-- end right-col -->
+
+</div><!-- end pro-layout -->
+
+<!-- Scripts — order matters -->
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/env.js"></script>
+<script src="js/telescope-tab.js"></script>
+<script src="js/middle.js"></script>
+<script src="js/right.js"></script>
+<script src="js/terminal.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

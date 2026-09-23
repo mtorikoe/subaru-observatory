@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Subaru Observatory — Outreach Suite</title>
+<link rel="stylesheet" href="css/shared.css">
+<style>
+body { min-height:100vh; display:flex; flex-direction:column; }
+.hero {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  justify-content:flex-start; padding:40px 24px 24px; gap:28px; text-align:center;
+}
+.hero-tag  { font-size:11px; color:var(--dim); letter-spacing:.18em; }
+.hero h1   { font-size:clamp(24px,3.5vw,46px); color:var(--accent); font-weight:normal; }
+.hero p    { font-size:13px; color:var(--muted); max-width:480px; line-height:1.8; }
+
+/* ── Audience selector ── */
+.audience-row {
+  display:flex; gap:10px; flex-wrap:wrap; justify-content:center;
+}
+.audience-btn {
+  padding:6px 18px; border-radius:20px; font-family:'Times New Roman',serif;
+  font-size:11px; cursor:pointer; border:1px solid var(--p2);
+  background:transparent; color:var(--muted); transition:all .2s;
+}
+.audience-btn.selected, .audience-btn:hover {
+  border-color:var(--accent); color:var(--accent); background:var(--panel);
+}
+
+/* ── Game cards ── */
+.game-section { display:flex; flex-direction:column; gap:10px; max-width:820px; width:100%; }
+.section-label {
+  font-size:10px; letter-spacing:.12em; color:var(--muted);
+  text-transform:uppercase; text-align:left; padding:0 4px;
+  border-left:2px solid var(--accent); padding-left:8px;
+}
+.game-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:12px;
+}
+.game-card {
+  background:var(--panel); border:1px solid var(--p2); border-radius:5px;
+  padding:20px; display:flex; flex-direction:column; gap:8px;
+  transition:border-color .25s, transform .2s; color:inherit;
+  text-decoration:none;
+}
+.game-card:hover { border-color:var(--accent); transform:translateY(-2px); }
+.game-card.coming-soon { opacity:.4; cursor:default; pointer-events:none; }
+.card-icon    { font-size:26px; }
+.card-method  { font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); }
+.card-title   { font-size:14px; color:var(--text); }
+.card-level   { font-size:9px; color:var(--dim); }
+.card-desc    { font-size:11px; color:var(--muted); line-height:1.65; }
+.card-tag     { margin-top:auto; font-size:9px; letter-spacing:.06em;
+  color:var(--dim); border-top:1px solid var(--p2); padding-top:7px; }
+.card-tag.ready { color:var(--green); }
+
+footer { padding:10px 24px; background:var(--panel); border-top:1px solid var(--p2);
+  font-size:10px; color:var(--dim); display:flex; justify-content:space-between;
+  flex-wrap:wrap; gap:8px; }
+</style>
+</head>
+<body>
+
+<nav class="site-nav">
+  <div class="logo">Subaru Observatory · <span>Outreach Suite</span></div>
+  <div class="nav-links">
+    <a href="index.html" class="active">Home</a>
+    <a href="games/scexao/index.html">SCExAO Game</a>
+    <a href="games/professional/index.html">Pro Simulator</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">SUBARU TELESCOPE · MAUNA KEA, HAWAII · 4,205 m</div>
+  <h1>How Do Astronomers Find Planets?</h1>
+  <p>Each experience below is built around a real instrument at Subaru Telescope. Choose by audience level — or try both.</p>
+
+  <!-- ── BEGINNER SECTION ── -->
+  <div class="game-section">
+    <div class="section-label">For younger audiences &amp; general public</div>
+    <div class="game-grid">
+
+      <a class="game-card" href="games/scexao/index.html">
+        <div class="card-icon">🔭</div>
+        <div class="card-method">Direct Imaging</div>
+        <div class="card-title">SCExAO Planet Hunter</div>
+        <div class="card-level">● Beginner · 2–5 min</div>
+        <div class="card-desc">Block the star's blinding light step by step — coronagraph, Lyot stop, adaptive optics — until a hidden planet appears in the infrared image.</div>
+        <div class="card-tag ready">▶ Play now</div>
+      </a>
+
+      <div class="game-card coming-soon">
+        <div class="card-icon">📉</div>
+        <div class="card-method">Transit Photometry</div>
+        <div class="card-title">Light Curve Detective</div>
+        <div class="card-level">● Beginner · 2–4 min</div>
+        <div class="card-desc">Watch four wavelength channels scan a star field and identify the tiny brightness dip that reveals a transiting planet.</div>
+        <div class="card-tag">Coming soon</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PROFESSIONAL SECTION ── -->
+  <div class="game-section">
+    <div class="section-label">For students, educators &amp; aspiring astronomers</div>
+    <div class="game-grid">
+
+      <a class="game-card" href="games/professional/index.html">
+        <div class="card-icon">⚙️</div>
+        <div class="card-method">Full Pipeline Simulation</div>
+        <div class="card-title">Subaru Observatory Professional Simulator</div>
+        <div class="card-level">●●● Advanced · 10–20 min</div>
+        <div class="card-desc">Operate the actual Subaru telescope pipeline — open the dome, target a real star, run AO3K → SCExAO → CHARIS → VAMPIRES using authentic terminal commands. Monitor humidity, earn score, unlock real images.</div>
+        <div class="card-tag ready">▶ Launch simulator</div>
+      </a>
+
+      <div class="game-card coming-soon">
+        <div class="card-icon">🌊</div>
+        <div class="card-method">Radial Velocity</div>
+        <div class="card-title">HDS Spectrograph Doppler Lab</div>
+        <div class="card-level">●● Intermediate · 5–10 min</div>
+        <div class="card-desc">Measure the Doppler wobble of a star as an invisible planet tugs it back and forth. Decode the radial velocity curve to find the planet's mass and orbit.</div>
+        <div class="card-tag">Coming soon</div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>Subaru Telescope · National Astronomical Observatory of Japan · Mauna Kea, Hawaii</span>
+  <span>Built for public outreach · PISCES / University of Hawaii at Hilo</span>
+</footer>
+
+</body>
+</html>
