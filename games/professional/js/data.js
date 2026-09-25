@@ -149,9 +149,9 @@ const SCORING = {
 const HUMIDITY_CONFIG = {
   baseMin: 30,
   baseMax: 65,
-  spikeChance: 0.004,    // per second — ~1 spike per ~4 min
+  spikeChance: 0.10,     // 10% chance per session — ~1 in 10 games gets a spike
   spikeValue: 78,        // humidity during a spike
-  spikeDuration: 20000,  // ms a spike lasts
+  spikeDuration: 20000,  // ms the spike lasts before recovering
   dangerThreshold: 70,
 };
 

@@ -55,11 +55,19 @@ function tickEnv() {
 
 function startHumidityMonitor() {
   if (humidityInterval) return;
+  // Tick the env charts and normal humidity drift every 3 seconds
   humidityInterval = setInterval(() => {
-    if (!G.gameOver && Math.random() < HUMIDITY_CONFIG.spikeChance * 2) {
-      triggerHumiditySpike();
-    }
-  }, 500);
+    if (!G.gameOver) tickEnv();
+  }, 3000);
+
+  // One-time roll: 10% chance this session gets a humidity spike at all.
+  // If yes, schedule it at a random point between 60 s and 8 min after opening.
+  if (Math.random() < 0.10) {
+    const delay = 60000 + Math.random() * (8 * 60000 - 60000); // 60 s – 8 min
+    setTimeout(() => {
+      if (!G.gameOver && G.enclosureOpen) triggerHumiditySpike();
+    }, delay);
+  }
 }
 
 function triggerHumiditySpike() {
