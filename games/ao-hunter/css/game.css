@@ -1,0 +1,325 @@
+/* ============================================================
+   game.css — Adaptive Optics Star Hunting
+   White theme matching professional simulator
+   ============================================================ */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+:root {
+  /* Light theme matching professional sim */
+  --bg:      #ffffff;
+  --deep:    #f0f4f8;
+  --panel:   #e8eef5;
+  --p2:      #d4e0ed;
+  --border:  #c0cfe0;
+  --accent:  #1a5fa8;
+  --gold:    #b07800;
+  --green:   #1a7a32;
+  --red:     #c0222a;
+  --text:    #111827;
+  --muted:   #374151;
+  --dim:     #6b7280;
+  /* Canvas backgrounds stay dark — astronomical images */
+  --canvas-bg: #040810;
+}
+
+html, body {
+  height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:'Times New Roman', Times, serif;
+  overflow:hidden;
+}
+
+/* ── OUTER SHELL ──
+   rows: nav | upper-row | instruction | lower-row
+   instruction sits BELOW the entire upper area ── */
+.shell {
+  height:100vh;
+  display:grid;
+  grid-template-rows: auto 1fr auto 1fr;
+}
+
+/* ── NAV ── */
+nav {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:7px 18px;
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  gap:10px; flex-wrap:wrap; flex-shrink:0;
+}
+.nav-logo { font-size:13px; color:var(--muted); letter-spacing:.04em; font-weight:600; }
+.nav-logo span { color:var(--accent); font-weight:700; }
+#stage-label {
+  font-size:12px; font-weight:700; color:var(--accent);
+  letter-spacing:.04em;
+}
+.nav-right { display:flex; gap:8px; align-items:center; }
+#pm-btn { display:none; }
+.nav-btn {
+  padding:5px 13px; background:transparent; border:1px solid var(--border);
+  border-radius:3px; color:var(--muted); font-family:inherit; font-size:12px;
+  font-weight:600; cursor:pointer; transition:border-color .2s, color .2s;
+}
+.nav-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ── UPPER ROW: star field | star view | pallet ── */
+.upper-row {
+  display:flex;
+  border-bottom:1px solid var(--border);
+  overflow:hidden;
+  min-height:0;
+}
+
+/* Star field */
+#sf-wrap {
+  flex:4; position:relative; overflow:hidden;
+  border-right:1px solid var(--border);
+  transition:flex .35s ease;
+  cursor:crosshair;
+  background:var(--canvas-bg);
+}
+#sf-canvas { display:block; width:100%; height:100%; }
+
+/* Star view */
+#sv-wrap {
+  flex:2; position:relative; overflow:hidden;
+  border-right:1px solid var(--border);
+  cursor:pointer;
+  background:var(--canvas-bg);
+}
+#sv-canvas { display:block; width:100%; height:100%; }
+#sv-wrap::after {
+  content:'Click to observe';
+  position:absolute; bottom:8px; left:50%;
+  transform:translateX(-50%);
+  font-size:11px; font-weight:600;
+  color:rgba(176,120,0,0.8);
+  pointer-events:none; white-space:nowrap;
+}
+
+/* Instrument order pallet column */
+#pallet-col {
+  flex:1; display:flex; flex-direction:column; gap:5px;
+  padding:8px; overflow-y:auto;
+  background:var(--panel);
+  min-width:110px;
+  border-left:1px solid var(--border);
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+}
+.pallet-label {
+  font-size:9px; font-weight:700; letter-spacing:.1em; color:var(--dim);
+  text-transform:uppercase; padding-bottom:4px;
+  border-bottom:1px solid var(--border); margin-bottom:2px; flex-shrink:0;
+}
+.pallet-empty { font-size:11px; color:var(--dim); text-align:center; margin-top:20px; }
+.pallet-item {
+  display:flex; align-items:center; gap:5px;
+  background:var(--bg); border:1.5px solid; border-radius:3px;
+  padding:5px 7px; flex-shrink:0;
+}
+.pallet-num  { font-size:10px; color:var(--dim); width:14px; flex-shrink:0; font-weight:700; }
+.pallet-icon { font-size:14px; flex-shrink:0; }
+.pallet-name { font-size:11px; color:var(--text); line-height:1.2; font-weight:600; }
+.pallet-reset {
+  margin-top:auto; padding:6px; background:transparent; border:1px solid var(--border);
+  border-radius:3px; color:var(--dim); font-family:inherit; font-size:11px;
+  cursor:pointer; text-align:center; transition:border-color .2s, color .2s;
+}
+.pallet-reset:hover { border-color:var(--red); color:var(--red); }
+
+/* ── INSTRUCTION BAR — below the full upper row ── */
+#instruction-bar {
+  background:var(--accent);
+  padding:10px 24px;
+  font-size:16px;
+  font-weight:700;
+  color:#fff;
+  text-align:center;
+  flex-shrink:0;
+  letter-spacing:.02em;
+  border-bottom:1px solid var(--border);
+}
+
+/* ── LOWER ROW: carousel | construction ── */
+.lower-row {
+  display:flex;
+  overflow:hidden;
+  min-height:0;
+}
+
+/* Instrument carousel */
+.carousel-wrap {
+  flex:2; display:flex; flex-direction:column;
+  border-right:1px solid var(--border);
+  min-width:0; background:var(--bg);
+}
+.carousel-header {
+  font-size:10px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase;
+  font-weight:700; padding:6px 12px; border-bottom:1px solid var(--border); flex-shrink:0;
+}
+.carousel-body {
+  flex:1; display:flex; align-items:stretch; overflow:hidden; position:relative;
+}
+.carousel-arrow {
+  width:34px; flex-shrink:0; background:transparent; border:none;
+  color:var(--muted); font-size:20px; cursor:pointer; transition:color .15s;
+  display:flex; align-items:center; justify-content:center;
+}
+.carousel-arrow:hover { color:var(--accent); }
+#carousel-rail {
+  flex:1; display:flex; gap:10px; overflow-x:auto; padding:10px 6px;
+  scroll-behavior:smooth; scrollbar-width:none; align-items:flex-start;
+}
+#carousel-rail::-webkit-scrollbar { display:none; }
+
+/* Instrument cards */
+.instr-card {
+  flex-shrink:0; width:148px;
+  background:var(--bg); border:1.5px solid var(--border); border-radius:6px;
+  padding:8px; cursor:pointer; transition:border-color .2s, transform .15s, box-shadow .15s;
+  display:flex; flex-direction:column; gap:4px;
+  user-select:none;
+}
+.instr-card:hover {
+  border-color:var(--accent); transform:translateY(-2px);
+  box-shadow:0 4px 12px rgba(26,95,168,0.12);
+}
+.instr-card.selected {
+  border-color:var(--gold); background:#fff8e8;
+  box-shadow:0 2px 8px rgba(176,120,0,0.15);
+}
+.instr-year  { font-size:9px; color:var(--dim); letter-spacing:.06em; font-weight:600; }
+.instr-icon-wrap {
+  width:100%; height:68px; border-radius:4px; border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  margin:2px 0; overflow:hidden; background:var(--deep);
+  position:relative;
+}
+/* Canvas inside icon wrap — for SVG drawn instruments */
+.instr-icon-wrap canvas {
+  width:100%; height:100%; display:block;
+}
+.instr-name  { font-size:12px; font-weight:700; color:var(--text); }
+.instr-role  { font-size:9px; color:var(--muted); line-height:1.4; }
+
+/* Construction view */
+.construction-wrap {
+  flex:1; display:flex; flex-direction:column;
+  min-width:0; background:var(--deep);
+  border-left:1px solid var(--border);
+}
+.construction-header {
+  font-size:10px; letter-spacing:.1em; color:var(--muted); text-transform:uppercase;
+  font-weight:700; padding:6px 10px; border-bottom:1px solid var(--border); flex-shrink:0;
+  background:var(--panel);
+}
+#construction-canvas { flex:1; display:block; width:100%; background:var(--canvas-bg); }
+
+/* Observe button & result banner */
+.carousel-footer {
+  display:flex; align-items:center; gap:8px;
+  padding:6px 10px; border-top:1px solid var(--border); flex-shrink:0;
+  background:var(--panel);
+}
+#observe-btn {
+  padding:7px 18px; background:var(--accent); border:none;
+  border-radius:3px; color:#fff; font-family:inherit; font-size:13px;
+  font-weight:700; cursor:pointer; transition:background .2s;
+}
+#observe-btn:hover { background:#143f7a; }
+#result-banner {
+  flex:1; font-size:12px; font-weight:700; padding:4px 8px;
+  border-radius:3px; display:none;
+}
+#result-banner.success { background:#e8f5ec; color:var(--green); border:1px solid #86c895; }
+#result-banner.miss    { background:#fde8e8; color:var(--red);   border:1px solid #f09090; }
+
+/* ── REWARD OVERLAY ── */
+#reward-overlay {
+  position:fixed; inset:0; z-index:200;
+  background:rgba(255,255,255,.94);
+  display:none; align-items:center; justify-content:center;
+}
+.reward-box {
+  background:var(--bg); border:1.5px solid var(--border);
+  border-radius:8px; padding:28px 32px; max-width:500px; width:90%;
+  display:flex; flex-direction:column; gap:14px; text-align:center;
+  box-shadow:0 12px 40px rgba(26,95,168,0.14);
+}
+.reward-title  { font-size:26px; color:var(--gold); font-weight:700; }
+.reward-result { font-size:14px; color:var(--muted); line-height:1.75; }
+.stage-unlock  {
+  font-size:13px; font-weight:700; color:var(--accent);
+  padding:7px 12px; border:1.5px solid var(--accent); border-radius:4px;
+  background:#e8f0fb;
+}
+.reward-new    {
+  font-size:10px; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; font-weight:700;
+}
+.reward-instr  {
+  border:2px solid; border-radius:6px; padding:14px;
+  display:flex; flex-direction:column; gap:6px; text-align:left;
+  background:var(--deep);
+}
+.reward-icon   { font-size:28px; }
+.reward-iname  { font-size:16px; font-weight:700; color:var(--text); }
+.reward-iyear  { font-size:11px; color:var(--dim); font-weight:600; }
+.reward-idesc  { font-size:12px; color:var(--muted); line-height:1.65; }
+.reward-btn {
+  padding:9px 26px; background:var(--accent); border:none; border-radius:4px;
+  color:#fff; font-family:inherit; font-size:14px; font-weight:700;
+  cursor:pointer; align-self:center; transition:background .2s;
+}
+.reward-btn:hover { background:#143f7a; }
+
+/* ── DEMO INPUT ── */
+#demo-code-input {
+  position:fixed; bottom:-60px; left:50%; transform:translateX(-50%);
+  opacity:0; pointer-events:none; width:220px; padding:5px 10px;
+  background:var(--bg); border:1.5px solid var(--border);
+  color:var(--text); font-family:monospace; font-size:12px;
+  border-radius:3px; transition:bottom .3s, opacity .3s;
+  box-shadow:0 4px 12px rgba(0,0,0,0.12);
+}
+#demo-code-input.visible {
+  bottom:12px; opacity:1; pointer-events:all;
+}
+
+/* ── PALLET HIGHLIGHT during observation ── */
+.pallet-item.pallet-active {
+  animation: palettePulse .7s ease-in-out infinite alternate;
+  border-width: 2px !important;
+}
+@keyframes palettePulse {
+  from { opacity:1; }
+  to   { opacity:.55; }
+}
+.pallet-item.pallet-done {
+  opacity: .55;
+}
+.pallet-active-label {
+  font-size: 9px; color: var(--gold); font-weight: 700;
+  margin-left: auto; white-space: nowrap;
+}
+
+/* ── DRAG RESIZE HANDLES ── */
+/* Vertical dividers (between columns in upper and lower rows) */
+.v-divider {
+  width: 5px; flex-shrink: 0;
+  background: var(--border); cursor: col-resize;
+  transition: background .15s; z-index: 10; position: relative;
+}
+.v-divider:hover, .v-divider.dragging { background: var(--accent); }
+
+/* Horizontal divider between upper-row and instruction bar */
+.h-divider {
+  height: 5px; flex-shrink: 0;
+  background: var(--border); cursor: row-resize;
+  transition: background .15s; z-index: 10;
+}
+.h-divider:hover, .h-divider.dragging { background: var(--accent); }
+
+/* Horizontal divider between instruction bar and lower-row */
+/* (instruction bar is not resizable) */
+#instruction-bar { cursor: row-resize; }
+#instruction-bar:hover { filter: brightness(1.08); }

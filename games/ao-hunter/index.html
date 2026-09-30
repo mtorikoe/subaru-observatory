@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Adaptive Optics Star Hunting — Subaru Observatory</title>
+<link rel="stylesheet" href="css/game.css">
+</head>
+<body>
+
+<!-- REWARD OVERLAY -->
+<div id="reward-overlay"></div>
+
+<div class="shell">
+
+  <!-- NAV -->
+  <nav>
+    <div class="nav-logo">Subaru Observatory · <span>Adaptive Optics Star Hunting</span></div>
+    <span id="stage-label">Stage 1</span>
+    <div class="nav-right">
+      <button class="nav-btn" id="pm-btn">Show proper motion</button>
+      <button class="nav-btn" onclick="window.location.href='../../index.html'">Home</button>
+      <button class="nav-btn" onclick="if(confirm('Reset all progress?')){resetProgress();location.reload();}">Reset</button>
+    </div>
+  </nav>
+
+  <!-- UPPER ROW: star field | star view | pallet -->
+  <div class="upper-row">
+
+    <!-- Star field (expands when no star selected) -->
+    <div id="sf-wrap">
+      <canvas id="sf-canvas"></canvas>
+    </div>
+
+    <div class="v-divider" id="div-sf-sv"></div>
+    <!-- Current targeted star view -->
+    <div id="sv-wrap" style="display:none;">
+      <canvas id="sv-canvas"></canvas>
+    </div>
+
+    <div class="v-divider" id="div-sv-pallet"></div>
+    <!-- Instrument order pallet -->
+    <div id="pallet-col">
+      <div class="pallet-label">Build order</div>
+      <div class="pallet-empty">Choose instruments below</div>
+    </div>
+
+  </div><!-- end upper-row -->
+
+  <!-- Drag handle between upper row and instruction bar (resizes upper/lower split) -->
+  <div class="h-divider" id="div-upper-lower"></div>
+
+  <!-- INSTRUCTION BAR — drag to resize upper/lower split -->
+  <div id="instruction-bar" title="Drag to resize">Choose a star from the field on the left.</div>
+
+  <!-- LOWER ROW: carousel | construction -->
+  <div class="lower-row">
+
+    <!-- Instrument carousel -->
+    <div class="carousel-wrap">
+      <div class="carousel-header">Instruments — click to add · click again to remove</div>
+      <div class="carousel-body">
+        <button class="carousel-arrow" id="carousel-left" onclick="carouselLeft()">‹</button>
+        <div id="carousel-rail"></div>
+        <button class="carousel-arrow" id="carousel-right" onclick="carouselRight()">›</button>
+      </div>
+      <div class="carousel-footer">
+        <button id="observe-btn">▶ Observe</button>
+        <div id="result-banner"></div>
+      </div>
+    </div>
+
+    <div class="v-divider" id="div-carousel-construct"></div>
+    <!-- Construction / assembled telescope view -->
+    <div class="construction-wrap">
+      <div class="construction-header">Assembled telescope</div>
+      <canvas id="construction-canvas"></canvas>
+    </div>
+
+  </div>
+
+</div><!-- end shell -->
+
+<!-- Hidden demo input — revealed by pressing Shift+D twice -->
+<input id="demo-code-input" type="text" placeholder="demo code…" autocomplete="off" spellcheck="false">
+
+<script>
+// Reveal demo input on Shift+D twice
+let demoKeyCount=0;
+document.addEventListener('keydown',e=>{
+  if(e.shiftKey&&e.key==='D'){
+    demoKeyCount++;
+    if(demoKeyCount>=2){
+      demoKeyCount=0;
+      const inp=document.getElementById('demo-code-input');
+      inp.classList.toggle('visible');
+      if(inp.classList.contains('visible')) inp.focus();
+    }
+  } else { demoKeyCount=0; }
+});
+</script>
+
+<!-- Scripts in dependency order -->
+<script src="js/data-instruments.js"></script>
+<script src="js/data-stars.js"></script>
+<script src="js/state.js"></script>
+<script src="js/starfield.js"></script>
+<script src="js/starview.js"></script>
+<script src="js/instruments.js"></script>
+<script src="js/game.js"></script>
+
+
+<script>
+/* ── Resize drag handles ── */
+(function() {
+  // Horizontal drag: dragging right → left panel grows
+  function hDrag(divEl, getLeft, setLeft, minLeft) {
+    if (!divEl) return;
+    let down=false, startX=0, startW=0;
+    divEl.addEventListener('mousedown', e => {
+      down=true; startX=e.clientX; startW=getLeft();
+      divEl.classList.add('dragging');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!down) return;
+      const newW = Math.max(minLeft, startW + (e.clientX - startX));
+      setLeft(newW);
+    });
+    window.addEventListener('mouseup', () => {
+      if (!down) return; down=false;
+      divEl.classList.remove('dragging');
+      document.body.style.cursor=''; document.body.style.userSelect='';
+    });
+  }
+
+  // Vertical drag: dragging DOWN → upper panel grows, lower panel shrinks
+  function vDrag(divEl, getUpper, setUpper, minUpper, minLower) {
+    if (!divEl) return;
+    let down=false, startY=0, startH=0;
+    divEl.addEventListener('mousedown', e => {
+      down=true; startY=e.clientY; startH=getUpper();
+      divEl.classList.add('dragging');
+      document.body.style.cursor='row-resize';
+      document.body.style.userSelect='none';
+      e.preventDefault();
+    });
+    window.addEventListener('mousemove', e => {
+      if (!down) return;
+      // dy positive = dragged down = upper grows
+      const newH = Math.max(minUpper, startH + (e.clientY - startY));
+      const shell = document.querySelector('.shell');
+      const totalH = shell ? shell.offsetHeight : window.innerHeight;
+      const navH   = document.querySelector('nav')?.offsetHeight   || 38;
+      const instrH = document.getElementById('instruction-bar')?.offsetHeight || 42;
+      const maxH   = totalH - navH - instrH - minLower - 10;
+      setUpper(Math.min(newH, maxH));
+    });
+    window.addEventListener('mouseup', () => {
+      if (!down) return; down=false;
+      divEl.classList.remove('dragging');
+      document.body.style.cursor=''; document.body.style.userSelect='';
+    });
+  }
+
+  const sfWrap  = document.getElementById('sf-wrap');
+  const svWrap  = document.getElementById('sv-wrap');
+  const pCol    = document.getElementById('pallet-col');
+  const upper   = document.querySelector('.upper-row');
+  const carWrap = document.querySelector('.carousel-wrap');
+  const conWrap = document.querySelector('.construction-wrap');
+
+  // sf ↔ sv: drag right to make star field wider
+  hDrag(document.getElementById('div-sf-sv'),
+    ()=>sfWrap.offsetWidth,
+    w=>{ sfWrap.style.flex='none'; sfWrap.style.width=w+'px'; },
+    100
+  );
+
+  // sv ↔ pallet: drag right to make star view wider
+  hDrag(document.getElementById('div-sv-pallet'),
+    ()=>svWrap.offsetWidth,
+    w=>{ svWrap.style.flex='none'; svWrap.style.width=w+'px'; },
+    80
+  );
+
+  // Drag the instruction bar itself to resize upper/lower split
+  const instrBar = document.getElementById('instruction-bar');
+  vDrag(instrBar,
+    ()=>upper.offsetHeight,
+    h=>{ upper.style.flex='none'; upper.style.height=h+'px'; },
+    80, 80
+  );
+  // Also keep the explicit divider as fallback
+  vDrag(document.getElementById('div-upper-lower'),
+    ()=>upper.offsetHeight,
+    h=>{ upper.style.flex='none'; upper.style.height=h+'px'; },
+    80, 80
+  );
+
+  // carousel ↔ construction: drag right to make carousel wider
+  hDrag(document.getElementById('div-carousel-construct'),
+    ()=>carWrap.offsetWidth,
+    w=>{ carWrap.style.flex='none'; carWrap.style.width=w+'px'; },
+    120
+  );
+})();
+</script>
+</body>
+</html>

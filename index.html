@@ -190,7 +190,7 @@ footer {
   <!-- Two cards centered -->
   <div class="game-grid">
 
-    <a class="game-card" href="games/scexao/index.html">
+    <a class="game-card" href="games/ao-hunter/index.html">
       <div class="card-icon">🔭</div>
       <div class="card-method">Direct Imaging</div>
       <div class="card-title">Adaptive Optics Star Hunting</div>
@@ -231,6 +231,44 @@ footer {
   <span>Subaru Telescope · National Astronomical Observatory of Japan · Mauna Kea, Hawaii</span>
   <span>Built for public outreach · PISCES / University of Hawaii at Hilo</span>
 </footer>
+
+
+<!-- Hidden demo code input — press Shift+D twice to reveal -->
+<input id="home-demo-input" type="text"
+  style="position:fixed;bottom:-60px;left:50%;transform:translateX(-50%);
+    opacity:0;pointer-events:none;width:220px;padding:5px 10px;
+    border-radius:4px;border:1px solid #c0cfe0;font-size:12px;
+    font-family:monospace;background:#fff;color:#111;
+    transition:bottom .3s,opacity .3s;"
+  placeholder="enter demo code…" autocomplete="off" spellcheck="false">
+
+<script>
+let _dk=0;
+document.addEventListener('keydown',e=>{
+  if(e.shiftKey&&e.key==='D'){
+    _dk++;
+    if(_dk>=2){
+      _dk=0;
+      const inp=document.getElementById('home-demo-input');
+      const vis=inp.style.bottom==='-60px'||inp.style.bottom==='';
+      inp.style.bottom=vis?'12px':'-60px';
+      inp.style.opacity=vis?'1':'0';
+      inp.style.pointerEvents=vis?'all':'none';
+      if(vis) inp.focus();
+    }
+  } else {_dk=0;}
+});
+document.getElementById('home-demo-input').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    if(e.target.value.trim()==='science-night-demo'){
+      // Store demo flag and navigate
+      sessionStorage.setItem('ao_demo','1');
+      window.location.href='games/ao-hunter/index.html';
+    }
+    e.target.value='';
+  }
+});
+</script>
 
 </body>
 </html>
