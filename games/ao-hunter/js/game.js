@@ -1,25 +1,23 @@
 /* ============================================================
-   game.js — layout, stage control, instructions, rewards
+   game.js — layout, instructions, observation flow, rewards
    ============================================================ */
 
-// ── INSTRUCTION STEPS ──────────────────────────────────────
 const INSTRUCTIONS = [
-  { step:0, text:'Choose a star from the field' },
-  { step:1, text:'The star looks blurry! Choose instruments below to build your telescope.' },
-  { step:2, text:'Good — now click Observe to run the telescope.' },
-  { step:3, text:'Observing… please wait.' },
-  { step:4, text:'A faint companion is visible! Click it to confirm your discovery.' },
-  { step:5, text:'Wonderful! Discovery confirmed. Collect your new instrument.' },
+  { step:0, text:'Choose a star from the field on the left.' },
+  { step:1, text:'The star looks blurry! Add instruments below, then click Observe.' },
+  { step:2, text:'Try a different instrument combination and click Observe again.' },
+  { step:3, text:'Observing…' },
+  { step:4, text:'A faint companion is visible — click it to confirm your discovery!' },
+  { step:5, text:'Discovery confirmed! Collect your new instrument.' },
+  { step:6, text:'Good call — no companion detected with this telescope setup.' },
 ];
 
 function updateInstructions(step) {
   const el = document.getElementById('instruction-bar');
-  if (!el) return;
-  const msg = INSTRUCTIONS[step] || INSTRUCTIONS[0];
-  el.textContent = msg.text;
+  if (el) el.textContent = (INSTRUCTIONS[step]||INSTRUCTIONS[0]).text;
 }
 
-// ── LAYOUT TOGGLE ──────────────────────────────────────────
+// ── LAYOUT ────────────────────────────────────────────────
 function renderLayout() {
   const sfWrap = document.getElementById('sf-wrap');
   const svWrap = document.getElementById('sv-wrap');
@@ -30,62 +28,114 @@ function renderLayout() {
   } else {
     sfWrap.style.flex = '2';
     svWrap.style.display = 'flex';
-    svWrap.style.flex = '2';
+    svWrap.style.flex    = '2';
   }
+  const btns = document.getElementById('sv-buttons');
+  if (btns) btns.style.display = G.starFieldExpanded ? 'none' : 'flex';
 }
 
-// ── OBSERVE ────────────────────────────────────────────────
+// ── BUTTON STATE ──────────────────────────────────────────
+// Observe is enabled whenever: star selected + instruments chosen + not running + not yet observed
+// Re-selecting a star resets _svObserved so Observe becomes available again.
+function setButtonStates() {
+  const obBtn = document.getElementById('observe-btn');
+  const npBtn = document.getElementById('no-planet-btn');
+
+  const canObserve = G.selectedStar
+    && G.selectedInstruments.length > 0
+    && !G.observationRunning
+    && !_svObserved;            // once observed, must pick new star or reset
+
+  if (obBtn) {
+    obBtn.disabled    = !canObserve;
+    obBtn.textContent = G.observationRunning ? 'Observing…' : '▶ Observe';
+  }
+
+  // "No planet" button: only after observation completes with no companion prompt
+  const showNoPlanet = _svObserved && !_svCompanionClickable && !G.observationRunning;
+  if (npBtn) npBtn.style.display = showNoPlanet ? 'block' : 'none';
+}
+
+// ── OBSERVE ───────────────────────────────────────────────
 function triggerObservation() {
-  if (!G.selectedStar)              { updateInstructions(0); return; }
+  if (!G.selectedStar)                  { updateInstructions(0); return; }
   if (G.selectedInstruments.length===0) { updateInstructions(1); return; }
-  if (G.observationRunning)         return;
-  if (_svObserved)                  return;   // already observed this star — pick a new one
+  if (G.observationRunning)             return;
+  if (_svObserved)                      return;
 
   updateInstructions(3);
+  setButtonStates();
+
   animateObservationSteps(() => {
     const result = evaluateObservation();
     G.observationComplete = true;
-    // Reveal the star view at the calculated clarity
     revealStarView(result.clarity);
     showResultBanner(result);
+    setButtonStates();   // update after _svObserved becomes true
 
-    if (!result.success) {
-      updateInstructions(1);
-      return;
-    }
-
-    if (!result.discovered) {
-      // Clean image but no companion — no reward, let player try another star
-      updateInstructions(2);
-      return;
-    }
-
-    // Companion visible — player must click it to confirm
-    // (revealStarView already set _svCompanionClickable and called updateInstructions(4))
+    if (!result.success) { updateInstructions(2); return; }
+    if (!result.discovered) { updateInstructions(6); return; }
+    // companion visible → handled by companion click in starview.js
   });
 }
 
-// ── The companion-click confirmation is handled in starview.js
-// which calls showRewardScreen() directly after confirmation ──
+// ── CONFIRM NO PLANET ────────────────────────────────────
+function confirmNoPlanet() {
+  _stopPulse?.();
+  const npBtn = document.getElementById('no-planet-btn');
+  if (npBtn) npBtn.style.display='none';
+  showNoPlanetOverlay();
+}
 
-document.getElementById('observe-btn')?.addEventListener('click', triggerObservation);
+function showNoPlanetOverlay() {
+  const overlay = document.getElementById('reward-overlay');
+  if (!overlay) return;
+  overlay.innerHTML = `
+    <div class="reward-box">
+      <div class="reward-title" style="color:var(--accent)">No Exoplanet Detected</div>
+      <div class="reward-result">
+        Correct — no companion is visible with this telescope configuration.<br>
+        Try a different star, or unlock more powerful instruments to look deeper.
+      </div>
+      <button class="reward-btn" onclick="closeNoPlanetOverlay()">Continue observing →</button>
+    </div>
+  `;
+  overlay.style.display='flex';
+  updateInstructions(6);
+}
 
-// ── RESULT BANNER ──────────────────────────────────────────
+function closeNoPlanetOverlay() {
+  document.getElementById('reward-overlay').style.display='none';
+  document.getElementById('result-banner').style.display='none';
+  // Do NOT reset instruments or star — let player pick a new star freely
+  G.observationComplete = false;
+  G.observationRunning  = false;
+  // Reset star view so player can reselect
+  G.selectedStar       = null;
+  G.starFieldExpanded  = true;
+  resetStarView();
+  setButtonStates();
+  renderLayout();
+  renderStarView();
+  updateInstructions(0);
+}
+
+// ── RESULT BANNER ─────────────────────────────────────────
 function showResultBanner(result) {
   const banner = document.getElementById('result-banner');
   if (!banner) return;
-  banner.textContent = result.message;
-  banner.className   = 'result-banner ' + (result.success ? 'success' : 'miss');
+  banner.textContent   = result.message;
+  banner.className     = 'result-banner '+(result.success?'success':'miss');
   banner.style.display = 'block';
-  if (!result.success) setTimeout(() => { banner.style.display='none'; }, 4000);
+  if (!result.success) setTimeout(()=>{ banner.style.display='none'; }, 4000);
 }
 
-// ── REWARD SCREEN ──────────────────────────────────────────
+// ── REWARD SCREEN ─────────────────────────────────────────
 function showRewardScreen(newInstrId, result) {
   const overlay = document.getElementById('reward-overlay');
   if (!overlay) return;
-  const instr     = INSTRUMENTS[newInstrId];
-  const stageMsg  = (G.stage===2 || newInstrId==='hsc')
+  const instr    = INSTRUMENTS[newInstrId];
+  const stageMsg = (newInstrId==='hsc')
     ? '<div class="stage-unlock">🌟 Stage 2 Unlocked — Gaia Proper Motion Field!</div>' : '';
 
   overlay.innerHTML = `
@@ -102,101 +152,80 @@ function showRewardScreen(newInstrId, result) {
           <div class="reward-iyear">Installed at Subaru Telescope ${instr.year}</div>
           <div class="reward-idesc">${instr.description}</div>
         </div>
-      ` : '<div class="reward-result">You have unlocked all instruments — master astronomer!</div>'}
+      ` : '<div class="reward-result">All instruments unlocked — master astronomer!</div>'}
       <button class="reward-btn" onclick="closeReward()">Continue observing →</button>
     </div>
   `;
-  overlay.style.display = 'flex';
+  overlay.style.display='flex';
   updateInstructions(5);
-
-  // Draw instrument picture in reward card
-  if (instr) {
-    requestAnimationFrame(() => {
-      const rc = document.getElementById('reward-instr-canvas');
-      if (rc) drawInstrumentPicture(rc, newInstrId, false);
-    });
-  }
+  if (instr) requestAnimationFrame(()=>{
+    const rc=document.getElementById('reward-instr-canvas');
+    if (rc) drawInstrumentPicture(rc, newInstrId, false);
+  });
 }
 
 function closeReward() {
-  document.getElementById('reward-overlay').style.display = 'none';
-  document.getElementById('result-banner').style.display  = 'none';
-  G.observationComplete    = false;
-  G.selectedStar           = null;
-  G.starFieldExpanded      = true;
-  G.selectedInstruments    = [];
-  G.observationRunning     = false;
+  document.getElementById('reward-overlay').style.display='none';
+  document.getElementById('result-banner').style.display='none';
+  G.observationComplete=false; G.selectedStar=null;
+  G.starFieldExpanded=true;    G.selectedInstruments=[];
+  G.observationRunning=false;
   resetStarView();
-  renderLayout();
-  renderInstrumentPallet();
-  renderInstrumentCarousel();
-  renderConstructionView();
-  renderStarView();
+  setButtonStates();
+  const npBtn=document.getElementById('no-planet-btn');
+  if (npBtn) npBtn.style.display='none';
+  renderLayout(); renderInstrumentPallet(); renderInstrumentCarousel();
+  renderConstructionView(); renderStarView();
   updateInstructions(0);
-  if (G.stage===2) generateGaiaField();
-  else generateField();
+  if (G.stage===2) generateGaiaField(); else generateField();
 }
 
-// ── STAGE SWITCH ───────────────────────────────────────────
+// ── STAGE / PM ────────────────────────────────────────────
 function checkStageSwitch() {
-  const stageLabel = document.getElementById('stage-label');
-  if (!stageLabel) return;
-  stageLabel.textContent = G.stage===2 ? 'Stage 2' : 'Stage 1';
+  const el=document.getElementById('stage-label');
+  if (el) el.textContent=G.stage===2?'Stage 2':'Stage 1';
   if (G.stage===2) {
     generateGaiaField();
-    const pmBtn = document.getElementById('pm-btn');
-    if (pmBtn) pmBtn.style.display = 'inline-block';
+    const btn=document.getElementById('pm-btn');
+    if (btn) btn.style.display='inline-block';
   }
 }
 
-// ── PM ANIMATION ───────────────────────────────────────────
-document.getElementById('pm-btn')?.addEventListener('click', () => {
-  G.pmPlaying = !G.pmPlaying;
-  const pmBtn = document.getElementById('pm-btn');
-  if (pmBtn) pmBtn.textContent = G.pmPlaying ? 'Stop proper motion' : 'Show proper motion';
+document.getElementById('pm-btn')?.addEventListener('click',()=>{
+  G.pmPlaying=!G.pmPlaying;
+  const btn=document.getElementById('pm-btn');
+  if (btn) btn.textContent=G.pmPlaying?'Stop proper motion':'Show proper motion';
 });
 
-// ── DEMO CODE ──────────────────────────────────────────────
+// ── DEMO ──────────────────────────────────────────────────
 (function(){
-  const inp = document.getElementById('demo-code-input');
+  const inp=document.getElementById('demo-code-input');
   if (!inp) return;
-  inp.addEventListener('keydown', e => {
-    if (e.key==='Enter' && inp.value.trim()==='science-night-demo') {
-      activateDemoMode();
-      inp.value=''; inp.blur();
-      checkStageSwitch();
-      renderInstrumentCarousel();
-      renderInstrumentPallet();
-      renderConstructionView();
-      alert('Demo mode activated. Advanced instruments unlocked.');
+  inp.addEventListener('keydown',e=>{
+    if (e.key==='Enter'&&inp.value.trim()==='science-night-demo') {
+      activateDemoMode(); inp.value=''; inp.blur();
+      checkStageSwitch(); renderInstrumentCarousel();
+      renderInstrumentPallet(); renderConstructionView();
+      alert('Demo mode activated.');
     }
   });
 })();
 
-// ── INIT ───────────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────────────────
 function init() {
   if (sessionStorage.getItem('ao_demo')==='1') {
-    sessionStorage.removeItem('ao_demo');
-    activateDemoMode();
-  } else {
-    loadProgress();
-  }
+    sessionStorage.removeItem('ao_demo'); activateDemoMode();
+  } else { loadProgress(); }
   checkStageSwitch();
   renderLayout();
-  if (G.stage===2) generateGaiaField();
-  else generateField();
-  renderInstrumentCarousel();
-  renderInstrumentPallet();
-  renderConstructionView();
-  updateInstructions(0);
-  renderStarfield();
+  if (G.stage===2) generateGaiaField(); else generateField();
+  renderInstrumentCarousel(); renderInstrumentPallet();
+  renderConstructionView();   setButtonStates();
+  updateInstructions(0);      renderStarfield();
 }
 document.addEventListener('DOMContentLoaded', init);
-window.addEventListener('resize', () => {
-  renderLayout();
-  if (G.stage===2) generateGaiaField();
-  else generateField();
-  renderConstructionView();
-  renderStarView();
-  renderInstrumentCarousel();
+window.addEventListener('resize',()=>{
+  renderLayout(); renderConstructionView();
+  renderStarView(); renderInstrumentCarousel();
+  if (G.stage===2) generateGaiaField(); else generateField();
 });

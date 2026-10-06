@@ -99,24 +99,38 @@ function renderInstrumentPallet() {
 
 // ── OBSERVATION ANIMATION ──────────────────────────────────
 let observationStep = -1;
+let _obsSafetyTimer = null;
 
 function animateObservationSteps(onDone) {
   observationStep = -1;
-  const steps = G.selectedInstruments.length;
-  _drawObservingLabel();
+  const steps = Math.max(1, G.selectedInstruments.length);
+  const perStep = 420;
+  const totalMs = steps * perStep + 400;
+
   G.observationRunning = true;
+  _drawObservingLabel();
+
+  // Safety net: if something goes wrong, always call onDone
+  if (_obsSafetyTimer) clearTimeout(_obsSafetyTimer);
+  _obsSafetyTimer = setTimeout(() => {
+    G.observationRunning = false;
+    observationStep = -1;
+    renderInstrumentPallet();
+    if (onDone) onDone();
+  }, totalMs + 1000);
 
   function next() {
     observationStep++;
-    renderConstructionView();
-    renderInstrumentPallet();   // highlight current step in pallet
+    try { renderConstructionView(); } catch(e) { /* never block */ }
+    try { renderInstrumentPallet(); } catch(e) {}
     if (observationStep < steps - 1) {
-      setTimeout(next, 420);
+      setTimeout(next, perStep);
     } else {
       setTimeout(() => {
+        clearTimeout(_obsSafetyTimer);
         G.observationRunning = false;
         observationStep = -1;
-        renderInstrumentPallet();  // clear highlight
+        try { renderInstrumentPallet(); } catch(e) {}
         if (onDone) onDone();
       }, 350);
     }
@@ -127,8 +141,12 @@ function animateObservationSteps(onDone) {
 function _drawObservingLabel() {
   const cvs = document.getElementById('sv-canvas');
   if (!cvs) return;
-  const W = cvs.offsetWidth || 300, H = cvs.offsetHeight || 260;
-  cvs.width = W; cvs.height = H;
+  // Read from parent — never assign to cvs.width/height here
+  const parent = cvs.parentElement;
+  const W = (parent && parent.offsetWidth  > 10) ? parent.offsetWidth  : (cvs.width  || 300);
+  const H = (parent && parent.offsetHeight > 10) ? parent.offsetHeight : (cvs.height || 260);
+  // Only resize if needed, avoid clearing a valid canvas
+  if (cvs.width !== W || cvs.height !== H) { cvs.width = W; cvs.height = H; }
   const ctx = cvs.getContext('2d');
   ctx.fillStyle = '#040810'; ctx.fillRect(0,0,W,H);
   const cx=W/2, cy=H/2;

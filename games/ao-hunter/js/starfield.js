@@ -217,10 +217,14 @@ sfCvs.addEventListener('click', e => {
   G.observationComplete= false;
   G.observationRunning = false;
   G.starFieldExpanded  = false;
+  // Reset blurriness for this star — instruments intentionally kept
+  // so player can reuse the same telescope on a new star
   resetStarView();
   renderLayout();
   renderStarView();
-  updateInstructions(1);
+  // Re-enable Observe if instruments are already chosen
+  setButtonStates();
+  updateInstructions(G.selectedInstruments.length > 0 ? 2 : 1);
 });
 
 sfCvs.addEventListener('touchend', e => {
