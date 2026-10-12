@@ -6,14 +6,23 @@
 // Slot groups — only one from each group may be selected at a time
 // (except CHARIS/VAMPIRES/FOCUS which stack on top of SCExAO)
 const INSTRUMENT_GROUPS = {
-  'wide-field':    ['suprime-cam','hsc'],
-  'spectrograph':  ['hds','ird','pfs'],
-  'survey':        ['moircs','fmos'],
-  'ao':            ['ao36','ao188','ao3k'],
-  'coronagraph':   ['ciao','hiciao','scexao'],
-  'ifs':           ['charis'],
-  'visible':       ['vampires'],
-  'fiber':         ['focus'],
+  'prime':        ['suprime-cam','hsc','fmos'],        // one at a time
+  'spectrograph': ['hds','ird','pfs'],
+  'cass':         ['moircs','ircs','focas','comics'],  // one at a time
+  'ao':           ['ao36','ao188','ao3k'],
+  'coronagraph':  ['ciao','hiciao','scexao'],
+  'ifs':          ['charis'],
+  'visible':      ['vampires'],
+  'fiber':        ['focus'],
+};
+
+const MOUNT_OF = {
+  'suprime-cam':'prime', 'hsc':'prime', 'fmos':'prime', 'pfs':'prime',
+  'ao36':'irnas', 'ao188':'irnas', 'ao3k':'irnas',
+  'ciao':'irnas', 'hiciao':'irnas', 'scexao':'irnas',
+  'charis':'irnas', 'vampires':'irnas', 'focus':'irnas', 'ird':'irnas',
+  'hds':'optnas',
+  'moircs':'cass', 'ircs':'cass', 'focas':'cass', 'comics':'cass',
 };
 
 // Fixed display order in the pallet (left to right, always)
@@ -30,7 +39,7 @@ const INSTRUMENTS = {
   'suprime-cam': {
     name: 'Suprime-Cam',
     year: 2000,
-    group: 'wide-field',
+    group: 'prime',
     role: 'Wide-field optical imaging — acquires the star field',
     shortRole: 'Field acquisition',
     color: '#4a90d9',
@@ -42,7 +51,7 @@ const INSTRUMENTS = {
   'hsc': {
     name: 'HSC',
     year: 2012,
-    group: 'wide-field',
+    group: 'prime',
     role: 'Ultra-wide optical imaging — 1.5 degree field',
     shortRole: 'Wide field survey',
     color: '#2271c8',
@@ -90,7 +99,7 @@ const INSTRUMENTS = {
   'moircs': {
     name: 'MOIRCS',
     year: 2007,
-    group: 'survey',
+    group: 'cass',
     role: 'Near-IR multi-object spectroscopy — confirms youth of targets',
     shortRole: 'Survey / age confirm',
     color: '#8b4513',
@@ -102,10 +111,10 @@ const INSTRUMENTS = {
   'fmos': {
     name: 'FMOS',
     year: 2009,
-    group: 'survey',
+    group: 'prime',
     role: 'Wide-field near-IR fibers — surveys young star populations',
     shortRole: 'Wide survey',
-    color: '#6b3410',
+    color: '#dcecff',
     blurReduction: 0.08,
     unlockOrder: 3,
     description: 'The Fiber Multi-Object Spectrograph covers a wide field with 400 near-infrared fibers, surveying young stellar populations across entire star-forming regions to find the best planet-hunting candidates.',
@@ -210,7 +219,7 @@ const INSTRUMENTS = {
   'focus': {
     name: 'FOCUS',
     year: 2017,
-    group: 'fiber',
+    group: 'cass',
     role: 'Fiber injection — connects SCExAO to IRD for precision RV',
     shortRole: 'Precision fiber RV',
     color: '#ff5722',
@@ -218,6 +227,42 @@ const INSTRUMENTS = {
     unlockOrder: 9,
     description: 'FOCUS injects the SCExAO-corrected starlight into a single-mode fiber that feeds IRD, enabling extremely precise radial velocity measurements — combining direct imaging capability with Doppler planet detection.',
     icon: '🔗',
+  },
+  'ircs':   { 
+    name:'IRCS',   
+    year:2000, 
+    group:'cass', 
+    color:'#b5651d', 
+    blurReduction:0.08, 
+    unlockOrder:4,
+    role:'Near-IR camera and spectrograph', 
+    shortRole:'Near-IR imaging',
+    description:'The Infrared Camera and Spectrograph images and takes spectra of targets in the near-infrared.', 
+    icon:'🔬' 
+  },
+  'focas':  { 
+    name:'FOCAS',  
+    year:2000, 
+    group:'cass', 
+    color:'#16a085', 
+    blurReduction:0.08, 
+    unlockOrder:4,
+    role:'Optical camera and spectrograph', 
+    shortRole:'Optical imaging/spectra',
+    description:'The Faint Object Camera and Spectrograph covers optical imaging and spectroscopy of faint targets.', 
+    icon:'🔬' 
+  },
+  'comics': { 
+    name:'COMICS', 
+    year:2000, 
+    group:'cass', 
+    color:'#d35400', 
+    blurReduction:0.08, 
+    unlockOrder:4,
+    role:'Mid-infrared camera and spectrometer', 
+    shortRole:'Mid-IR imaging',
+    description:'The Cooled Mid-Infrared Camera and Spectrometer observes warm dust in the mid-infrared.', 
+    icon:'🔬' 
   },
 };
 

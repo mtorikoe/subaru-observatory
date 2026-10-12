@@ -112,11 +112,11 @@ function evaluateObservation() {
   const star = G.selectedStar;
   const sel  = G.selectedInstruments;
 
-  const hasWide  = sel.some(id => INSTRUMENT_GROUPS['wide-field'].includes(id));
+  const hasPrime = sel.some(id => INSTRUMENT_GROUPS['prime'].includes(id));        // hasWide を置き換え
   const hasAO    = sel.some(id => INSTRUMENT_GROUPS['ao'].includes(id));
   const hasCoro  = sel.some(id => INSTRUMENT_GROUPS['coronagraph'].includes(id));
   const hasSpec  = sel.some(id => INSTRUMENT_GROUPS['spectrograph'].includes(id));
-  const hasSurvey= sel.some(id => INSTRUMENT_GROUPS['survey'].includes(id));
+  const hasCass  = sel.some(id => INSTRUMENT_GROUPS['cass'].includes(id));         // hasSurvey を置き換え
   const hasIFS   = sel.some(id => INSTRUMENT_GROUPS['ifs'].includes(id));
   const hasVis   = sel.some(id => INSTRUMENT_GROUPS['visible'].includes(id));
 
@@ -132,7 +132,7 @@ function evaluateObservation() {
   }
 
   // Minimum requirement: wide-field + AO + coronagraph
-  if (!hasWide) return { success:false, clarity:0.15, message:'Add a wide-field imager (Suprime-Cam or HSC) to acquire the field.' };
+  if (!hasPrime) return { success:false, clarity:0.15, message:'Place an instrument at the Prime Focus (Suprime-Cam, HSC or FMOS).' };
   if (!hasAO)   return { success:false, clarity:0.30, message:'Add an adaptive optics system (AO36, AO188, or AO3K) to correct atmospheric blurring.' };
   if (!hasCoro) return { success:false, clarity:0.35, message:'Add a coronagraph (CIAO, HiCIAO, or SCExAO) to block the star\'s direct light.' };
 
@@ -143,7 +143,7 @@ function evaluateObservation() {
 
   // Bonus clarity modifiers
   if (hasSpec)   clarity = Math.min(1.0, clarity + 0.05);
-  if (hasSurvey) clarity = Math.min(1.0, clarity + 0.05);
+  if (hasCass)   clarity = Math.min(1.0, clarity + 0.05);
   if (hasIFS)    clarity = Math.min(1.0, clarity + 0.08);
   if (hasVis)    clarity = Math.min(1.0, clarity + 0.06);
 

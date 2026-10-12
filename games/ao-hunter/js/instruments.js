@@ -170,142 +170,33 @@ function _drawObservingLabel() {
 
 function drawInstrumentPicture(cvs, id, selected) {
   const W = cvs.width, H = cvs.height;
-  const ctx = cvs.getContext('2d');
-  const instr = INSTRUMENTS[id];
-  const col   = instr ? instr.color : '#7ecfed';
-  ctx.fillStyle = '#080f1e'; ctx.fillRect(0,0,W,H);
-  if (id === 'suprime-cam' || id === 'hsc') {
-    drawTelescopePicture(ctx, W, H, col, id === 'hsc', selected);
+  const ctx = cvs.getContext('2d');     // get pencil
+  const col = INSTRUMENTS[id]?.color || '#7ecfed';
+  ctx.fillStyle = '#080f1e';            // decide color
+  ctx.fillRect(0, 0, W, H);             // fill the background
+  if (MOUNT_OF[id] === 'prime') {
+    drawSubaruTelescope(ctx, W, H, [id], { thumb: true });   // FMOS, HSC, Suprime-Cam
   } else {
     drawBoxInstrument(ctx, W, H, col, id, selected);
   }
 }
 
-// ── Suprime-Cam / HSC telescope drawing ────────────────────
-// 8.2m circular primary mirror, straight support posts in
-// zigzag ring pattern, thin foundation block, Cassegrain
-// stair block + Nasmyth platforms on left and right.
-function drawTelescopePicture(ctx, W, H, col, isHSC, sel) {
-  ctx.save();
-  ctx.lineWidth = 1.3;
-  ctx.shadowBlur = 4; ctx.shadowColor = col + '66';
-  const cx = W*0.50, cy = H*0.46;
-
-  // ── Primary mirror: circular dish ──────────────────────
-  const pR  = Math.min(W,H) * 0.26;
-  const pCy = cy + H*0.10;   // vertical centre of primary
-  ctx.beginPath(); ctx.arc(cx, pCy, pR, 0, Math.PI*2);
-  ctx.fillStyle=col+'14'; ctx.fill();
-  ctx.strokeStyle=col; ctx.lineWidth=1.8; ctx.stroke();
-  // Inner ring (secondary obscuration outline)
-  ctx.beginPath(); ctx.arc(cx, pCy, pR*0.18, 0, Math.PI*2);
-  ctx.strokeStyle=col+'55'; ctx.lineWidth=1; ctx.stroke();
-  // Radial segment lines
-  for (let i=0;i<6;i++) {
-    const a = (i/6)*Math.PI*2;
-    ctx.beginPath();
-    ctx.moveTo(cx+Math.cos(a)*pR*0.2, pCy+Math.sin(a)*pR*0.2);
-    ctx.lineTo(cx+Math.cos(a)*pR*0.95, pCy+Math.sin(a)*pR*0.95);
-    ctx.strokeStyle=col+'33'; ctx.lineWidth=0.8; ctx.stroke();
-  }
-
-  // ── Focal point (secondary / camera) above mirror ──────
-  const focalY = pCy - H*0.38;
-  const focalR = isHSC ? pR*0.20 : pR*0.14;
-  ctx.beginPath(); ctx.arc(cx, focalY, focalR, 0, Math.PI*2);
-  ctx.fillStyle=col+'44'; ctx.fill();
-  ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.stroke();
-  ctx.fillStyle=col; ctx.font=`bold ${Math.round(focalR*0.9)}px Times New Roman`;
-  ctx.textAlign='center';
-  ctx.fillText(isHSC?'HSC':'CAM', cx, focalY+focalR*0.35);
-
-  // ── Support posts: straight, placed in zigzag ring ──────
-  // Posts alternate between two radii to form zigzag when
-  // viewed from above — they are drawn as straight verticals.
-  const nPosts = 8;
-  const rInner = pR*0.52, rOuter = pR*0.82;
-  for (let i=0;i<nPosts;i++) {
-    const angle = (i/nPosts)*Math.PI*2 - Math.PI/2;
-    const r     = i%2===0 ? rInner : rOuter;
-    const bx    = cx + Math.cos(angle)*r;
-    const by    = pCy + Math.sin(angle)*r*0.28;  // foreshortened y
-    // Straight vertical post from primary surface to focal ring
-    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(cx, focalY);
-    ctx.strokeStyle = col + (i%2===0?'88':'55');
-    ctx.lineWidth=1; ctx.stroke();
-    // Post base dot on mirror
-    ctx.beginPath(); ctx.arc(bx, by, 2, 0, Math.PI*2);
-    ctx.fillStyle=col+'99'; ctx.fill();
-  }
-
-  // ── Thin wide foundation block ──────────────────────────
-  const foundW=pR*2.4, foundH=H*0.045;
-  const foundY=pCy+pR*0.32;
-  ctx.fillStyle=col+'22';
-  ctx.fillRect(cx-foundW/2, foundY, foundW, foundH);
-  ctx.strokeStyle=col+'88'; ctx.lineWidth=1;
-  ctx.strokeRect(cx-foundW/2, foundY, foundW, foundH);
-
-  // ── Cassegrain focus: stair-step block on right side ────
-  const csX  = cx + pR*0.9;
-  const csY  = pCy + pR*0.12;
-  const step = H*0.03;
-  for (let s=0;s<3;s++) {
-    ctx.fillStyle=col+'18';
-    ctx.fillRect(csX+s*step*0.6, csY+s*step, step*2, step);
-    ctx.strokeStyle=col+'55'; ctx.lineWidth=0.8;
-    ctx.strokeRect(csX+s*step*0.6, csY+s*step, step*2, step);
-  }
-  ctx.fillStyle=col+'66'; ctx.font='7px Times New Roman'; ctx.textAlign='center';
-  ctx.fillText('Cass.', csX+step*1.8, csY+step*3.8);
-
-  // ── Two Nasmyth platforms (left and right) ──────────────
-  const nW=pR*0.55, nH=H*0.06;
-  const nY=pCy-pR*0.08;
-  // Left Nasmyth
-  ctx.fillStyle=col+'1a';
-  ctx.fillRect(cx-pR-nW, nY, nW, nH);
-  ctx.strokeStyle=col+'66'; ctx.lineWidth=0.8;
-  ctx.strokeRect(cx-pR-nW, nY, nW, nH);
-  ctx.fillStyle=col+'66'; ctx.font='7px Times New Roman'; ctx.textAlign='center';
-  ctx.fillText('Nasmyth L', cx-pR-nW/2, nY+nH*0.65);
-  // Right Nasmyth
-  ctx.fillStyle=col+'1a';
-  ctx.fillRect(cx+pR, nY, nW, nH);
-  ctx.strokeStyle=col+'66'; ctx.lineWidth=0.8;
-  ctx.strokeRect(cx+pR, nY, nW, nH);
-  ctx.fillStyle=col+'66'; ctx.font='7px Times New Roman'; ctx.textAlign='center';
-  ctx.fillText('Nasmyth R', cx+pR+nW/2, nY+nH*0.65);
-
-  ctx.shadowBlur=0;
-  ctx.fillStyle=col; ctx.font='bold 9px Times New Roman'; ctx.textAlign='center';
-  ctx.fillText(isHSC?'HSC (8.2m)':'Suprime-Cam (8.2m)', cx, H-3);
-  ctx.textAlign='left';
-  ctx.restore();
-}
 
 // ── Box instrument: mini stub + coloured box at port ───────
-const MOUNT_SIDE = {
-  'spectrograph':'right',
-  'survey':      'left',
-  'ao':          'bottom',
-  'coronagraph': 'bottom',
-  'ifs':         'right',
-  'visible':     'left',
-  'fiber':       'right',
-};
+const THUMB_SIDE = { irnas:'left', optnas:'right', cass:'bottom', prime:'bottom' };
 
 const BOX_LABELS = {
+  'suprime-cam':'SupCam','hsc':'HSC','fmos':'FMOS',
   'hds':'HDS','ird':'IRD','pfs':'PFS',
-  'moircs':'MOIRCS','fmos':'FMOS',
+  'moircs':'MOIRCS','ircs':'IRCS','focas':'FOCAS','comics':'COMICS',
   'ao36':'AO36','ao188':'AO188','ao3k':'AO3K',
   'ciao':'CIAO','hiciao':'HiCIAO','scexao':'SCExAO',
   'charis':'CHARIS','vampires':'VAMP','focus':'FOCUS',
 };
 
 function drawBoxInstrument(ctx, W, H, col, id, sel) {
-  const instr = INSTRUMENTS[id];
-  const side  = MOUNT_SIDE[instr?.group] || 'right';
+  const mount = MOUNT_OF[id];
+  const side  = THUMB_SIDE[mount] || 'right';
   const cx    = W*0.5, cy = H*0.5;
 
   // Mini telescope stub
@@ -319,40 +210,7 @@ function drawBoxInstrument(ctx, W, H, col, id, sel) {
   const boxW=W*0.30, boxH=H*0.34, portL=W*0.07;
   let bx,by;
 
-  if (side==='right') {
-    bx=tubeX+tubeW+portL; by=cy-boxH/2;
-    ctx.fillStyle=col+'22';
-    ctx.fillRect(bx,by,boxW,boxH);
-    ctx.strokeStyle=sel?col:col+'88'; ctx.lineWidth=sel?2:1.2;
-    ctx.strokeRect(bx,by,boxW,boxH);
-    ctx.fillStyle=col+'88'; ctx.fillRect(tubeX+tubeW,cy-3,portL,6);
-    ctx.fillStyle=col; ctx.font=`bold 8px Times New Roman`; ctx.textAlign='center';
-    ctx.fillText(BOX_LABELS[id]||'',bx+boxW/2,by+boxH/2+3);
-    ctx.fillStyle='#3a6a88'; ctx.font='8px Times New Roman';
-    ctx.fillText('Nasmyth R',bx+boxW/2,H-3);
-  } else if (side==='left') {
-    bx=tubeX-portL-boxW; by=cy-boxH/2;
-    ctx.fillStyle=col+'22';
-    ctx.fillRect(bx,by,boxW,boxH);
-    ctx.strokeStyle=sel?col:col+'88'; ctx.lineWidth=sel?2:1.2;
-    ctx.strokeRect(bx,by,boxW,boxH);
-    ctx.fillStyle=col+'88'; ctx.fillRect(tubeX-portL,cy-3,portL,6);
-    ctx.fillStyle=col; ctx.font=`bold 8px Times New Roman`; ctx.textAlign='center';
-    ctx.fillText(BOX_LABELS[id]||'',bx+boxW/2,by+boxH/2+3);
-    ctx.fillStyle='#3a6a88'; ctx.font='8px Times New Roman';
-    ctx.fillText('Nasmyth L',bx+boxW/2,H-3);
-  } else {
-    bx=cx-boxW/2; by=tubeY+tubeH+portL;
-    ctx.fillStyle=col+'22';
-    ctx.fillRect(bx,by,boxW,boxH);
-    ctx.strokeStyle=sel?col:col+'88'; ctx.lineWidth=sel?2:1.2;
-    ctx.strokeRect(bx,by,boxW,boxH);
-    ctx.fillStyle=col+'88'; ctx.fillRect(cx-3,tubeY+tubeH,6,portL);
-    ctx.fillStyle=col; ctx.font=`bold 8px Times New Roman`; ctx.textAlign='center';
-    ctx.fillText(BOX_LABELS[id]||'',bx+boxW/2,by+boxH/2+3);
-    ctx.fillStyle='#3a6a88'; ctx.font='8px Times New Roman';
-    ctx.fillText('Cassegrain',bx+boxW/2,H-3);
-  }
+  ctx.fillText(PORTS[mount]?.label || '', bx+boxW/2, H-3);
   ctx.textAlign='left';
 }
 
@@ -368,163 +226,124 @@ function renderConstructionView() {
   const W = cvs.width  = cvs.offsetWidth  || 240;
   const H = cvs.height = cvs.offsetHeight || 200;
   const ctx = cvs.getContext('2d');
-  ctx.fillStyle = '#050c18'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#050c18'; ctx.fillRect(0, 0, W, H);
+  drawSubaruTelescope(ctx, W, H, G.selectedInstruments);
+}
 
-  if (G.selectedInstruments.length === 0) {
-    ctx.fillStyle='#1a3a5c'; ctx.font='12px Times New Roman';
-    ctx.textAlign='center';
-    ctx.fillText('No instruments selected',W/2,H/2-8);
-    ctx.fillStyle='#2e4a6c'; ctx.font='10px Times New Roman';
-    ctx.fillText('Choose from the carousel below',W/2,H/2+10);
-    ctx.textAlign='left'; return;
-  }
+// Port slots in design units (100x100 space). dir: -1 = stack upward, +1 = downward
+const PORTS = {
+  prime:  { label:'Prime Focus',  x:36, y:18, w:28, h:11, dir:-1 },
+  irnas:  { label:'IR Nasmyth',   x:1,  y:54, w:28, h:10, dir:-1 },
+  optnas: { label:'Opt Nasmyth',  x:71, y:54, w:28, h:10, dir:-1 },
+  cass:   { label:'Cassegrain',   x:38, y:69, w:24, h:10, dir: 1 },
+};
 
-  const hasWide = G.selectedInstruments.find(id => INSTRUMENT_GROUPS['wide-field'].includes(id));
-  const tubeCol = hasWide ? (INSTRUMENTS[hasWide]?.color || '#2e6080') : '#2e6080';
+function drawSubaruTelescope(ctx, W, H, ids, opts = {}) {
+  const thumb = !!opts.thumb;
+  const primeId = ids.find(id => MOUNT_OF[id] === 'prime');
+  const body = primeId ? INSTRUMENTS[primeId].color : '#3b7ca8';
 
-  // ── Core telescope: circular 8.2m primary mirror ────────
-  const cx = W * 0.42, cy = H * 0.44;
-  const pR   = Math.min(W,H) * 0.15;
-  const pCy  = cy + H*0.10;
-  const focalY = pCy - H*0.30;
-  const focalR = pR*0.13;
+  const k  = Math.min(W * 0.62, H * 0.98) / 100;   // design unit -> pixels
+  const ox = (W - 100 * k) / 2, oy = H - 97 * k;
+  const lw = px => px / k;                           // line width in pixels
 
+  // ---------- fixed telescope body (always drawn) ----------
   ctx.save();
-  ctx.strokeStyle = tubeCol;
-  ctx.shadowBlur = 3; ctx.shadowColor = tubeCol+'44';
+  ctx.translate(ox, oy); ctx.scale(k, k);
+  ctx.strokeStyle = body; ctx.fillStyle = body + '18'; ctx.lineWidth = lw(1.3);
 
-  // Circular primary
-  ctx.beginPath(); ctx.arc(cx, pCy, pR, 0, Math.PI*2);
-  ctx.fillStyle=tubeCol+'14'; ctx.fill();
-  ctx.strokeStyle=tubeCol; ctx.lineWidth=1.5; ctx.stroke();
-  for (let i=0;i<6;i++){
-    const a=(i/6)*Math.PI*2;
+  // base
+  ctx.beginPath(); ctx.ellipse(50, 91, 38, 5, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  // fork legs
+  for (const x of [27, 69]) { ctx.fillRect(x-3, 52, 6, 38); ctx.strokeRect(x-3, 52, 6, 38); }
+  // Nasmyth platforms
+  ctx.fillRect(0, 54, 30, 3);  ctx.strokeRect(0, 54, 30, 3);
+  ctx.fillRect(70, 54, 30, 3); ctx.strokeRect(70, 54, 30, 3);
+  // tube edges
+  ctx.beginPath();
+  ctx.moveTo(35,23); ctx.lineTo(33,60); ctx.moveTo(65,23); ctx.lineTo(67,60); ctx.stroke();
+  
+  // truss zigzag (vertical): mirror edge <-> ring edge, around the circumference
+  const RING = { cx:50, cy:22, rx:15, ry:4   };   // top ring ellipse
+  const MIR  = { cx:50, cy:61, rx:15, ry:4.2 };   // primary mirror ellipse
+  const PAIRS = 6;                                 // number of up+down pairs
+  const SEG   = PAIRS * 2;                         // total strut count
+  const ptOn = (E, th) => [E.cx + Math.cos(th)*E.rx, E.cy + Math.sin(th)*E.ry];
+
+  for (let i = 0; i < SEG; i++) {
+    const th0 = (i   / SEG) * Math.PI * 2;         // angle at start (0 = right edge)
+    const th1 = ((i+1) / SEG) * Math.PI * 2;       // angle at end
+    const up  = i % 2 === 0;                       // even: mirror -> ring, odd: ring -> mirror
+    const [x0, y0] = ptOn(up ? MIR : RING, th0);
+    const [x1, y1] = ptOn(up ? RING : MIR, th1);
+    const front = Math.sin((th0 + th1) / 2) > 0;   // sin>0 = near side (lower half of ellipse)
+    ctx.strokeStyle = body + (front ? 'bb' : '44');   // back struts dimmer
+    ctx.lineWidth   = lw(front ? 1.1 : 0.8);
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.strokeStyle = body; ctx.lineWidth = lw(1.3);   // restore for following parts
+
+  ctx.strokeStyle = body;
+  // top ring + spider
+  ctx.beginPath(); ctx.ellipse(50, 22, 15, 4, 0, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(36,20); ctx.lineTo(64,24); ctx.moveTo(36,24); ctx.lineTo(64,20);
+  ctx.moveTo(50,18); ctx.lineTo(50,22);            // hub stem for Prime Focus
+  ctx.stroke();
+  // primary mirror cell + mirror + segment lines
+  ctx.beginPath(); ctx.ellipse(50, 62, 19, 6, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(50, 61, 15, 4.2, 0, 0, Math.PI*2);
+  ctx.fillStyle = body + '33'; ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = body + '44'; ctx.lineWidth = lw(0.8);
+  for (let i = 0; i < 6; i++) {
+    const a = i/6 * Math.PI*2;
     ctx.beginPath();
-    ctx.moveTo(cx+Math.cos(a)*pR*0.18, pCy+Math.sin(a)*pR*0.18);
-    ctx.lineTo(cx+Math.cos(a)*pR*0.92, pCy+Math.sin(a)*pR*0.92);
-    ctx.strokeStyle=tubeCol+'28'; ctx.lineWidth=0.8; ctx.stroke();
+    ctx.moveTo(50 + Math.cos(a)*3, 61 + Math.sin(a)*0.28*3);
+    ctx.lineTo(50 + Math.cos(a)*14.5, 61 + Math.sin(a)*4);
+    ctx.stroke();
   }
+  ctx.restore();
 
-  // Focal point
-  ctx.beginPath(); ctx.arc(cx, focalY, focalR, 0, Math.PI*2);
-  ctx.fillStyle=tubeCol+'33'; ctx.fill();
-  ctx.strokeStyle=tubeCol; ctx.lineWidth=1.2; ctx.stroke();
+  // ---------- instrument boxes at their ports ----------
+  ctx.textAlign = 'center';
+  Object.entries(PORTS).forEach(([key, p]) => {
+    const list = ids.filter(id => MOUNT_OF[id] === key);
+    const n = Math.max(1, list.length);
+    let h = Math.min(p.h, 44 / n);
+    let px = p.x, pw = p.w;
+    if (thumb && key === 'prime') { px = 30; pw = 40; h = 16; }   // bigger in small thumbnails
 
-  // Straight support posts in zigzag ring pattern
-  const nPosts=8, rIn=pR*0.48, rOut=pR*0.80;
-  for(let i=0;i<nPosts;i++){
-    const angle=(i/nPosts)*Math.PI*2 - Math.PI/2;
-    const r=i%2===0?rIn:rOut;
-    const bx=cx+Math.cos(angle)*r, by=pCy+Math.sin(angle)*r*0.22;
-    ctx.beginPath(); ctx.moveTo(bx,by); ctx.lineTo(cx,focalY);
-    ctx.strokeStyle=tubeCol+(i%2===0?'66':'44'); ctx.lineWidth=0.9; ctx.stroke();
-    ctx.beginPath(); ctx.arc(bx,by,1.5,0,Math.PI*2);
-    ctx.fillStyle=tubeCol+'88'; ctx.fill();
-  }
-
-  // Thin wide foundation block
-  const foundW=pR*2.1, foundH=H*0.038;
-  const foundY=pCy+pR*0.28;
-  ctx.fillStyle=tubeCol+'18'; ctx.fillRect(cx-foundW/2, foundY, foundW, foundH);
-  ctx.strokeStyle=tubeCol+'55'; ctx.lineWidth=0.8;
-  ctx.strokeRect(cx-foundW/2, foundY, foundW, foundH);
-
-  // Nasmyth platforms (left and right boxes)
-  const nasmY2=pCy-pR*0.08, nasmW=W*0.07, nasmH=H*0.05;
-  ctx.fillStyle=tubeCol+'18';
-  ctx.fillRect(cx-pR-nasmW, nasmY2-nasmH/2, nasmW, nasmH);
-  ctx.strokeStyle=tubeCol+'44'; ctx.lineWidth=0.8;
-  ctx.strokeRect(cx-pR-nasmW, nasmY2-nasmH/2, nasmW, nasmH);
-  ctx.fillRect(cx+pR, nasmY2-nasmH/2, nasmW, nasmH);
-  ctx.strokeRect(cx+pR, nasmY2-nasmH/2, nasmW, nasmH);
-
-  // Cassegrain stair block (right side, below mirror)
-  const csX=cx+pR*0.65, csY=pCy+pR*0.20, sH=H*0.022;
-  for(let s=0;s<3;s++){
-    ctx.fillStyle=tubeCol+'14';
-    ctx.fillRect(csX+s*sH*0.6, csY+s*sH, sH*2, sH);
-    ctx.strokeStyle=tubeCol+'38'; ctx.lineWidth=0.7;
-    ctx.strokeRect(csX+s*sH*0.6, csY+s*sH, sH*2, sH);
-  }
-
-  if(hasWide){
-    ctx.fillStyle=tubeCol; ctx.font='bold 7px Times New Roman'; ctx.textAlign='center';
-    ctx.fillText(INSTRUMENTS[hasWide].name, cx, focalY-5);
-  }
-  ctx.shadowBlur=0; ctx.textAlign='left'; ctx.restore();
-
-  // ── Attached instrument boxes ──────────────────────────
-  const nasmythRX = cx+pR+nasmW;
-  const nasmythLX = cx-pR-nasmW;
-  const cassY     = foundY+foundH;
-
-  const boxW  = W*0.20, boxH = H*0.12;
-  const gap   = 5;
-  let rightCount=0, leftCount=0, bottomCount=0;
-
-  G.selectedInstruments.forEach((id, stepIdx) => {
-    if (INSTRUMENT_GROUPS['wide-field'].includes(id)) return;
-    const instr  = INSTRUMENTS[id];
-    if (!instr) return;
-    const side   = MOUNT_SIDE[instr.group] || 'right';
-    const col    = instr.color;
-    const active = G.observationRunning && stepIdx === observationStep;
-    const done   = G.observationRunning && stepIdx < observationStep;
-    const lit    = active || done;
-
-    let bx, by, lineFrom, lineTo;
-
-    if (side==='right') {
-      bx = nasmythRX + 4;
-      by = nasmY - boxH/2 + rightCount*(boxH+gap);
-      lineFrom = {x:nasmythRX, y:nasmY};
-      lineTo   = {x:bx,        y:by+boxH/2};
-      rightCount++;
-    } else if (side==='left') {
-      bx = nasmythLX - 4 - boxW;
-      by = nasmY - boxH/2 + leftCount*(boxH+gap);
-      lineFrom = {x:nasmythLX, y:nasmY};
-      lineTo   = {x:bx+boxW,   y:by+boxH/2};
-      leftCount++;
-    } else {
-      bx = cx - boxW/2;
-      by = cassY + 4 + bottomCount*(boxH+gap);
-      lineFrom = {x:cx,    y:cassY};
-      lineTo   = {x:cx,    y:by};
-      bottomCount++;
+    // empty port: dashed placeholder + label
+    if (!list.length && !thumb) {
+      const y = p.dir < 0 ? p.y - h : p.y;
+      ctx.setLineDash([3,3]); ctx.strokeStyle = '#2a4a6c'; ctx.lineWidth = 1;
+      ctx.strokeRect(ox + px*k, oy + y*k, pw*k, h*k); ctx.setLineDash([]);
+      ctx.fillStyle = '#3a6a88'; ctx.font = '8px Times New Roman';
+      ctx.fillText(p.label, ox + (px + pw/2)*k, oy + (y + h/2)*k + 3, pw*k);
     }
 
-    // Connector
-    ctx.beginPath();
-    ctx.moveTo(lineFrom.x, lineFrom.y);
-    ctx.lineTo(lineTo.x,   lineTo.y);
-    ctx.strokeStyle = lit ? col : col+'44';
-    ctx.lineWidth   = lit ? 1.5 : 1;
-    ctx.setLineDash(lit ? [] : [3,3]); ctx.stroke(); ctx.setLineDash([]);
+    list.forEach((id, i) => {
+      const y   = p.dir < 0 ? p.y - (i+1)*h - i*1.5 : p.y + i*(h + 1.5);
+      const sx = ox + px*k, sy = oy + y*k, sw = pw*k, sh = h*k;
+      const col = INSTRUMENTS[id].color;
+      const step   = G.selectedInstruments.indexOf(id);
+      const active = !thumb && G.observationRunning && step === observationStep;
+      const done   = !thumb && G.observationRunning && step < observationStep;
+      const lit = active || done || thumb;
 
-    // Box fill + stroke
-    ctx.fillStyle   = active ? col+'44' : done ? col+'22' : col+'0e';
-    ctx.fillRect(bx, by, boxW, boxH);
-    ctx.strokeStyle = active ? col : lit ? col+'88' : col+'44';
-    ctx.lineWidth   = active ? 2 : 1;
-    ctx.strokeRect(bx, by, boxW, boxH);
+      ctx.fillStyle   = active ? col+'44' : lit ? col+'22' : col+'14';
+      ctx.fillRect(sx, sy, sw, sh);
+      ctx.strokeStyle = active ? col : lit ? col+'cc' : col+'88';
+      ctx.lineWidth   = active ? 2 : 1.2;
+      if (active) { ctx.shadowColor = col; ctx.shadowBlur = 8; }
+      ctx.strokeRect(sx, sy, sw, sh);
+      ctx.shadowBlur = 0;
 
-    // Active glow
-    if (active) {
-      ctx.shadowColor=col; ctx.shadowBlur=8;
-      ctx.strokeRect(bx,by,boxW,boxH);
-      ctx.shadowBlur=0;
-    }
-
-    // Step label
-    ctx.fillStyle = active ? '#fff' : lit ? col+'ee' : col+'77';
-    ctx.font      = `${active?'bold ':''}8px Times New Roman`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`${stepIdx+1}. ${BOX_LABELS[id]||instr.name}`, bx+boxW/2, by+boxH*0.62);
-    ctx.textAlign = 'left';
+      const label = BOX_LABELS[id] || INSTRUMENTS[id].name;
+      ctx.fillStyle = active ? '#fff' : col;
+      ctx.font = `${active ? 'bold ' : ''}${Math.max(6, Math.min(10, sh*0.6))}px Times New Roman`;
+      ctx.fillText(thumb ? label : `${step+1}. ${label}`, sx + sw/2, sy + sh*0.65, sw - 2);
+    });
   });
-
-  // Legend
-  ctx.fillStyle='#2a4a6c'; ctx.font='7px Times New Roman';
-  ctx.fillText('L=Nasmyth L  R=Nasmyth R  ↓=Cassegrain', 4, H-3);
+  ctx.textAlign = 'left';
 }
