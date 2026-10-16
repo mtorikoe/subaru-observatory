@@ -82,9 +82,6 @@ function generateGaiaField() {
     return {
       ...g,
       fx, fy,
-      // proper motion stored as fractional shift per year
-      pmfx: g.pmra  / (raR  * 3600) * 0.45 * 2,
-      pmfy:-g.pmdec / (decR * 3600) * 0.45 * 2,
       css: sp.css,
       size: Math.max(2, 7 - g.gmag * 0.35),
       phi: Math.random() * Math.PI * 2,
@@ -128,15 +125,6 @@ function renderStarfield() {
     ctx.fillStyle = `rgba(200,220,255,${s.op})`; ctx.fill();
   });
 
-  // Proper motion drift (Stage 2, fraction update)
-  if (G.stage === 2 && G.pmPlaying) {
-    G.pmAnimTime += 50;
-    G.fieldStars.forEach(s => {
-      if (s.pmfx === undefined) return;
-      s.fx += s.pmfx * 50;
-      s.fy += s.pmfy * 50;
-    });
-  }
 
   // Draw game stars using fraction coords
   G.fieldStars.forEach(s => {
@@ -186,11 +174,6 @@ function renderStarfield() {
     }
   });
 
-  // Stage 2 year counter
-  if (G.stage === 2 && G.pmPlaying) {
-    ctx.fillStyle='rgba(126,207,237,0.7)'; ctx.font='11px Times New Roman';
-    ctx.fillText(`+${Math.round(G.pmAnimTime)} yr`, 8, H-6);
-  }
 
   requestAnimationFrame(renderStarfield);
 }

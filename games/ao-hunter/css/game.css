@@ -49,7 +49,6 @@ nav {
 .nav-logo span { color:var(--accent); font-weight:700; }
 #stage-label { font-size:12px; font-weight:700; color:var(--accent); letter-spacing:.04em; }
 .nav-right { display:flex; gap:8px; align-items:center; }
-#pm-btn { display:none; }
 .nav-btn {
   padding:5px 13px; background:transparent; border:1px solid var(--border);
   border-radius:3px; color:var(--muted); font-family:inherit; font-size:12px;

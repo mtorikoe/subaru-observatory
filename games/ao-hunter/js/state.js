@@ -16,9 +16,6 @@ const G = {
   starFieldExpanded: true,   // true when no star chosen yet
   observationRunning: false,
   observationComplete: false,
-  // proper motion animation (Stage 2)
-  pmAnimTime: 0,             // in-game years accumulated
-  pmPlaying: false,
 };
 
 // ── PERSISTENCE ────────────────────────────────────────────

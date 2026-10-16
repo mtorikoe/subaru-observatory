@@ -180,22 +180,14 @@ function closeReward() {
   if (G.stage===2) generateGaiaField(); else generateField();
 }
 
-// ── STAGE / PM ────────────────────────────────────────────
+// ── STAGE  ────────────────────────────────────────────
 function checkStageSwitch() {
   const el=document.getElementById('stage-label');
   if (el) el.textContent=G.stage===2?'Stage 2':'Stage 1';
   if (G.stage===2) {
     generateGaiaField();
-    const btn=document.getElementById('pm-btn');
-    if (btn) btn.style.display='inline-block';
   }
 }
-
-document.getElementById('pm-btn')?.addEventListener('click',()=>{
-  G.pmPlaying=!G.pmPlaying;
-  const btn=document.getElementById('pm-btn');
-  if (btn) btn.textContent=G.pmPlaying?'Stop proper motion':'Show proper motion';
-});
 
 // ── DEMO ──────────────────────────────────────────────────
 (function(){
