@@ -10,11 +10,28 @@ const INSTRUCTIONS = [
   { step:4, text:'A faint companion is visible — click it to confirm your discovery!' },
   { step:5, text:'Discovery confirmed! Collect your new instrument.' },
   { step:6, text:'Good call — no companion detected with this telescope setup.' },
+  { step:7, text:'Telescope ready — click Observe!' },
+  { step:8, text:'Telescope ready. Now choose a star from the field.' },
 ];
 
 function updateInstructions(step) {
   const el = document.getElementById('instruction-bar');
   if (el) el.textContent = (INSTRUCTIONS[step]||INSTRUCTIONS[0]).text;
+}
+
+// Call this whenever the selected instruments change
+function onInstrumentsChanged() {
+  if (G.observationRunning) return;
+  // Changing instruments after an observation starts a fresh attempt on the same star
+  if (G.selectedStar && _svObserved) {
+    resetStarView();
+    document.getElementById('result-banner').style.display = 'none';
+  }
+  setButtonStates();
+  renderStarView();
+  const has = G.selectedInstruments.length > 0;
+  if (G.selectedStar) updateInstructions(has ? 7 : 1);   // star chosen
+  else                updateInstructions(has ? 8 : 0);   // no star yet
 }
 
 // ── LAYOUT ────────────────────────────────────────────────
@@ -168,7 +185,7 @@ function closeReward() {
   document.getElementById('reward-overlay').style.display='none';
   document.getElementById('result-banner').style.display='none';
   G.observationComplete=false; G.selectedStar=null;
-  G.starFieldExpanded=true;    G.selectedInstruments=[];
+  G.starFieldExpanded=true;    // G.selectedInstruments=[];
   G.observationRunning=false;
   resetStarView();
   setButtonStates();

@@ -88,6 +88,7 @@ function toggleInstrument(id) {
   renderInstrumentPallet();
   renderConstructionView();
   renderInstrumentCarousel();
+  onInstrumentsChanged();
 }
 
 // ── UNLOCK NEXT INSTRUMENT ─────────────────────────────────

@@ -32,7 +32,6 @@ function renderInstrumentCarousel() {
     `;
     card.addEventListener('click', () => {
       toggleInstrument(id);
-      renderStarView();
     });
     rail.appendChild(card);
     const pic = card.querySelector('.instr-pic');
@@ -92,7 +91,7 @@ function renderInstrumentPallet() {
     renderInstrumentPallet();
     renderInstrumentCarousel();
     renderConstructionView();
-    renderStarView();
+    onInstrumentsChanged(); 
   };
   col.appendChild(resetBtn);
 }
@@ -168,17 +167,34 @@ function _drawObservingLabel() {
    All others       → mini tube stub + coloured box at port
    ============================================================ */
 
+const _imgCache = {};
+
+function drawCover(ctx, img, W, H) {            // fill the canvas, crop the overflow
+  const s = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+  const w = img.naturalWidth * s, h = img.naturalHeight * s;
+  ctx.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+}
+
 function drawInstrumentPicture(cvs, id, selected) {
   const W = cvs.width, H = cvs.height;
-  const ctx = cvs.getContext('2d');     // get pencil
+  const ctx = cvs.getContext('2d');
   const col = INSTRUMENTS[id]?.color || '#7ecfed';
-  ctx.fillStyle = '#080f1e';            // decide color
-  ctx.fillRect(0, 0, W, H);             // fill the background
-  if (MOUNT_OF[id] === 'prime') {
-    drawSubaruTelescope(ctx, W, H, [id], { thumb: true });   // FMOS, HSC, Suprime-Cam
-  } else {
-    drawBoxInstrument(ctx, W, H, col, id, selected);
+  ctx.fillStyle = '#080f1e'; ctx.fillRect(0, 0, W, H);
+
+  const src = INSTRUMENTS[id]?.image;
+  if (src) {
+    let img = _imgCache[id];
+    if (!img) { img = _imgCache[id] = new Image(); img.src = src; }
+    if (!img.complete) {                         // still loading: redraw when done or failed
+      const redraw = () => drawInstrumentPicture(cvs, id, selected);
+      img.addEventListener('load',  redraw, { once:true });
+      img.addEventListener('error', redraw, { once:true });
+      return;
+    }
+    if (img.naturalWidth) { drawCover(ctx, img, W, H); return; }
+    // load failed: fall through to the drawn version
   }
+  drawBoxInstrument(ctx, W, H, col, id, selected);
 }
 
 
@@ -227,8 +243,23 @@ function renderConstructionView() {
   const H = cvs.height = cvs.offsetHeight || 200;
   const ctx = cvs.getContext('2d');
   ctx.fillStyle = '#050c18'; ctx.fillRect(0, 0, W, H);
+
+  // background picture (skipped if it failed to load)
+  if (_bgImg.complete && _bgImg.naturalWidth) {
+    drawCover(ctx, _bgImg, W, H);
+    ctx.fillStyle = 'rgba(5,12,24,0.45)';        // dark veil so the telescope stays readable
+    ctx.fillRect(0, 0, W, H);
+  }
+
   drawSubaruTelescope(ctx, W, H, G.selectedInstruments);
 }
+
+const TELESCOPE_COLOR = '#4a90d9';   // pick your blue
+
+const CONSTRUCTION_BG = '/assets/telescope-bg.jpg';   // index.html からの相対パス
+const _bgImg = new Image();
+_bgImg.src = CONSTRUCTION_BG;
+_bgImg.addEventListener('load', () => renderConstructionView());   // 読み込み後に再描画
 
 // Port slots in design units (100x100 space). dir: -1 = stack upward, +1 = downward
 const PORTS = {
@@ -240,14 +271,13 @@ const PORTS = {
 
 function drawSubaruTelescope(ctx, W, H, ids, opts = {}) {
   const thumb = !!opts.thumb;
-  const primeId = ids.find(id => MOUNT_OF[id] === 'prime');
-  const body = primeId ? INSTRUMENTS[primeId].color : '#3b7ca8';
-
+  const body = TELESCOPE_COLOR;
   const k  = Math.min(W * 0.62, H * 0.98) / 100;   // design unit -> pixels
   const ox = (W - 100 * k) / 2, oy = H - 97 * k;
   const lw = px => px / k;                           // line width in pixels
 
   // ---------- fixed telescope body (always drawn) ----------
+  const LINE = 2.2;     // main line thickness in pixels (was 1.3)
   ctx.save();
   ctx.translate(ox, oy); ctx.scale(k, k);
   ctx.strokeStyle = body; ctx.fillStyle = body + '18'; ctx.lineWidth = lw(1.3);

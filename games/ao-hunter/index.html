@@ -154,6 +154,7 @@ document.addEventListener('keydown',e=>{
       const total = document.querySelector('.shell').offsetHeight;
       const maxH  = total - nav - instr - minDn - 10;
       setH(Math.min(maxH, Math.max(minUp, h0+(e.clientY-y0))));
+      if (typeof renderStarView==='function') { renderStarView(); renderConstructionView(); }
     });
     window.addEventListener('mouseup', ()=>{
       if(!down) return; down=false;
@@ -179,9 +180,10 @@ document.addEventListener('keydown',e=>{
     w=>{ svWrap.style.flex='none'; svWrap.style.width=w+'px'; }, 80);
 
   // Instruction bar itself is the resize handle for upper/lower split
+  const shell = document.querySelector('.shell');
   vDrag(instrBar,
     ()=>upper.offsetHeight,
-    h=>{ upper.style.flex='none'; upper.style.height=h+'px'; }, 80, 80);
+    h=>{ shell.style.gridTemplateRows = `auto ${h}px auto 1fr`; }, 80, 80);
 
   hDrag(document.getElementById('div-carousel-construct'),
     ()=>carWrap.offsetWidth,

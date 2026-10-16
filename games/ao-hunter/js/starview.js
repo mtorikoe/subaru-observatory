@@ -9,6 +9,41 @@ let _svObserved         = false;
 let _svCompanionClickable = false;
 let _pulseLoopId        = null;
 
+// ── Background star field (generated once, stored as fractions) ──
+let _bgStars = null;
+function _makeBgStars() {
+  const n = 350;                                   // density: 200 sparse … 600 dense
+  _bgStars = Array.from({length:n}, () => {
+    const m = Math.pow(Math.random(), 3);          // most stars faint, few bright
+    return {
+      fx: Math.random(), fy: Math.random(),
+      r:  0.35 + m*1.3,                            // radius in px (tiny)
+      a:  0.25 + m*0.7,                            // brightness
+      hue: Math.random(),                          // picks colour below
+    };
+  });
+}
+
+function _drawBgStars(ctx, W, H) {
+  if (!_bgStars) _makeBgStars();
+  _bgStars.forEach(s => {
+    const x = s.fx*W, y = s.fy*H;
+    // keep the area around the target clear
+    if (Math.hypot(x - W/2, y - H/2) < 18) return;
+    const c = s.hue < 0.15 ? '170,190,255'          // blue
+            : s.hue < 0.75 ? '255,250,235'          // white
+            : s.hue < 0.90 ? '255,220,160'          // yellow
+            :                '255,170,120';         // orange
+    ctx.beginPath(); ctx.arc(x, y, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(${c},${s.a})`; ctx.fill();
+    // only the brightest get a faint glow
+    if (s.r > 1.2) {
+      ctx.beginPath(); ctx.arc(x, y, s.r*2.6, 0, Math.PI*2);
+      ctx.fillStyle = `rgba(${c},${s.a*0.12})`; ctx.fill();
+    }
+  });
+}
+
 function resetStarView() {
   _svClarity            = 0;
   _svObserved           = false;
@@ -86,19 +121,26 @@ function renderStarView() {
 
   const star    = G.selectedStar;
   const clarity = _svObserved ? _svClarity : 0;
-  const blur    = 1 - clarity;
-
+  const blur    = Math.pow(1 - clarity, 1.6);
   ctx.fillStyle = '#040810'; ctx.fillRect(0,0,W,H);
+  _drawBgStars(ctx, W, H);
   const cx=W/2, cy=H/2;
 
-  // PSF glow
-  const psfR = 8 + blur*60;
-  const g1 = ctx.createRadialGradient(cx,cy,0, cx,cy,psfR*4);
-  g1.addColorStop(0,   `rgba(255,240,180,${0.9-blur*0.3})`);
-  g1.addColorStop(0.3, `rgba(255,150,80,${0.6-blur*0.2})`);
-  g1.addColorStop(0.7, `rgba(80,20,100,${0.2*clarity})`);
-  g1.addColorStop(1,   'rgba(0,0,0,0)');
-  ctx.beginPath(); ctx.arc(cx,cy,psfR*4,0,Math.PI*2); ctx.fillStyle=g1; ctx.fill();
+  // PSF glow: soft halo + sharp core
+  const psfR = 2 + blur*28;                       // was 8 + blur*60
+  const g1 = ctx.createRadialGradient(cx,cy,0, cx,cy,psfR*3);   // was psfR*4
+  g1.addColorStop(0,    `rgba(255,252,235,1)`);
+  g1.addColorStop(0.10, `rgba(255,235,170,${0.95-blur*0.3})`);
+  g1.addColorStop(0.30, `rgba(255,150,80,${0.45-blur*0.2})`);
+  g1.addColorStop(0.65, `rgba(80,20,100,${0.12*clarity})`);
+  g1.addColorStop(1,    'rgba(0,0,0,0)');
+  ctx.beginPath(); ctx.arc(cx,cy,psfR*3,0,Math.PI*2); ctx.fillStyle=g1; ctx.fill();
+
+  // crisp core (観測後、鮮明になるほどはっきり見える)
+  if (_svObserved) {
+    ctx.beginPath(); ctx.arc(cx,cy,1.5+blur*3,0,Math.PI*2);
+    ctx.fillStyle=`rgba(255,255,245,${0.6+clarity*0.4})`; ctx.fill();
+  }
 
   // Speckle halo (post-observation only)
   if (_svObserved && blur>0.1 && clarity>0.1) {
@@ -108,7 +150,7 @@ function renderStarView() {
       const sx=cx+Math.cos(angle)*dist, sy=cy+Math.sin(angle)*dist;
       const sg=ctx.createRadialGradient(sx,sy,0,sx,sy,5+blur*6);
       sg.addColorStop(0,`rgba(200,100,50,${blur*0.35})`); sg.addColorStop(1,'rgba(0,0,0,0)');
-      ctx.beginPath(); ctx.arc(sx,sy,5+blur*6,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
+      ctx.beginPath(); ctx.arc(sx,sy,1.2+blur*2,0,Math.PI*2); ctx.fillStyle=sg; ctx.fill();
     }
   }
 

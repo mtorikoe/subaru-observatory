@@ -47,6 +47,7 @@ const INSTRUMENTS = {
     unlockOrder: 0,   // 0 = available from start
     description: 'Suprime-Cam gave Subaru one of the widest fields of view of any 8-metre telescope. Its 10,000×8,000 pixel mosaic CCD can image a region the size of the full Moon in a single exposure.',
     icon: '🔭',
+    image:'/assets/instruments/suprime-cam.jpg',
   },
   'hsc': {
     name: 'HSC',
@@ -59,6 +60,7 @@ const INSTRUMENTS = {
     unlockOrder: 5,
     description: 'Hyper Suprime-Cam replaced Suprime-Cam with 116 CCDs covering 1.5 degrees — the size of three full Moons. The HSC Subaru Strategic Program has imaged a quarter of the entire sky.',
     icon: '🔭',
+    image:'/assets/instruments/hsc.jpg',
   },
   'hds': {
     name: 'HDS',
@@ -71,6 +73,7 @@ const INSTRUMENTS = {
     unlockOrder: 0,
     description: 'The High Dispersion Spectrograph splits starlight into its spectrum with extremely high resolution, allowing astronomers to detect a star\'s wobble caused by an orbiting planet — the radial velocity method.',
     icon: '📊',
+    image:'/assets/instruments/hds.jpg',
   },
   'ird': {
     name: 'IRD',
@@ -83,6 +86,7 @@ const INSTRUMENTS = {
     unlockOrder: 9,
     description: 'The InfraRed Doppler instrument measures radial velocities of cool red M-type stars in near-infrared, where they shine most brightly. M-type stars are the most common planet hosts in the galaxy.',
     icon: '📊',
+    image:'/assets/instruments/ird.jpg',
   },
   'pfs': {
     name: 'PFS',
@@ -95,6 +99,7 @@ const INSTRUMENTS = {
     unlockOrder: 10,
     description: 'The Prime Focus Spectrograph deploys 2400 optical fibers across a 1.3-degree field, measuring spectra of thousands of stars simultaneously to survey galaxy evolution and stellar populations.',
     icon: '📊',
+    image:'/assets/instruments/pfs.jpg',
   },
   'moircs': {
     name: 'MOIRCS',
@@ -107,6 +112,7 @@ const INSTRUMENTS = {
     unlockOrder: 2,
     description: 'The Multi-Object Infrared Camera and Spectrograph measures near-infrared spectra of many objects at once, confirming which stars in a young cluster are true members worth targeting for planet searches.',
     icon: '🔬',
+    image:'/assets/instruments/moircs.jpg',
   },
   'fmos': {
     name: 'FMOS',
@@ -119,6 +125,7 @@ const INSTRUMENTS = {
     unlockOrder: 3,
     description: 'The Fiber Multi-Object Spectrograph covers a wide field with 400 near-infrared fibers, surveying young stellar populations across entire star-forming regions to find the best planet-hunting candidates.',
     icon: '🔬',
+    image:'/assets/instruments/fmos.jpg',
   },
   'ao36': {
     name: 'AO36',
@@ -131,6 +138,7 @@ const INSTRUMENTS = {
     unlockOrder: 0,
     description: 'AO36 was Subaru\'s first adaptive optics system, using 36 actuators on a deformable mirror to correct atmospheric blurring in real time. Combined with CIAO it produced the first direct images of disks at Subaru.',
     icon: '🌀',
+    image:'/assets/instruments/ao36.jpg',
   },
   'ao188': {
     name: 'AO188',
@@ -143,6 +151,7 @@ const INSTRUMENTS = {
     unlockOrder: 1,
     description: 'AO188 upgraded Subaru\'s adaptive optics to 188 actuators, dramatically reducing wavefront error. Paired with HiCIAO it became the backbone of the SEEDS survey — discovering GJ 504 b and imaging dozens of protoplanetary disks.',
     icon: '🌀',
+    image:'/assets/instruments/ao188.jpg',
   },
   'ao3k': {
     name: 'AO3K',
@@ -155,6 +164,7 @@ const INSTRUMENTS = {
     unlockOrder: 11,
     description: 'AO3K is Subaru\'s most powerful adaptive optics system with 3228 actuators, providing extreme wavefront correction for all instruments on the infrared Nasmyth platform — the prerequisite for SCExAO coronagraphy.',
     icon: '🌀',
+    image:'/assets/instruments/ao3k.jpg',
   },
   'ciao': {
     name: 'CIAO',
@@ -167,6 +177,7 @@ const INSTRUMENTS = {
     unlockOrder: 0,
     description: 'CIAO (Coronagraphic Imager with Adaptive Optics) was Subaru\'s first high-contrast imager. With AO36 it directly imaged protoplanetary disks around AB Aurigae and SR 24 for the first time.',
     icon: '🌑',
+    image:'/assets/instruments/ciao.jpg',
   },
   'hiciao': {
     name: 'HiCIAO',
@@ -179,6 +190,7 @@ const INSTRUMENTS = {
     unlockOrder: 2,
     description: 'HiCIAO (High Contrast Coronographic Imager for Adaptive Optics) was built specifically for Subaru\'s SEEDS survey. With AO188 it discovered GJ 504 b — the coldest exoplanet ever directly imaged at the time.',
     icon: '🌑',
+    image:'/assets/instruments/hiciao.jpg',
   },
   'scexao': {
     name: 'SCExAO',
@@ -191,6 +203,7 @@ const INSTRUMENTS = {
     unlockOrder: 6,
     description: 'SCExAO combines a PIAA coronagraph with extreme adaptive optics to achieve the sharpest images ever taken at Subaru. It is the platform for CHARIS, VAMPIRES, and other next-generation instruments.',
     icon: '🌑',
+    image:'/assets/instruments/scexao.jpg',
   },
   'charis': {
     name: 'CHARIS',
@@ -203,6 +216,7 @@ const INSTRUMENTS = {
     unlockOrder: 7,
     description: 'CHARIS (Coronagraphic High Angular Resolution Imaging Spectrograph) images exoplanets across J+H+K bands simultaneously, producing a 3D data cube that reveals the atmosphere composition of directly imaged companions.',
     icon: '🌈',
+    image:'/assets/instruments/charis.jpg',
   },
   'vampires': {
     name: 'VAMPIRES',
@@ -215,6 +229,7 @@ const INSTRUMENTS = {
     unlockOrder: 8,
     description: 'VAMPIRES (Visible Aperture Masking Polarimetric Imager for Resolved Exoplanetary Structures) uses visible light and polarimetry to reveal the detailed structure of protoplanetary disks — showing how dust scatters starlight.',
     icon: '🌈',
+    image:'/assets/instruments/vampires.jpg',
   },
   'focus': {
     name: 'FOCUS',
@@ -227,6 +242,7 @@ const INSTRUMENTS = {
     unlockOrder: 9,
     description: 'FOCUS injects the SCExAO-corrected starlight into a single-mode fiber that feeds IRD, enabling extremely precise radial velocity measurements — combining direct imaging capability with Doppler planet detection.',
     icon: '🔗',
+    image:'/assets/instruments/focus.jpg',
   },
   'ircs':   { 
     name:'IRCS',   
@@ -238,7 +254,8 @@ const INSTRUMENTS = {
     role:'Near-IR camera and spectrograph', 
     shortRole:'Near-IR imaging',
     description:'The Infrared Camera and Spectrograph images and takes spectra of targets in the near-infrared.', 
-    icon:'🔬' 
+    icon:'🔬',
+    image:'/assets/instruments/ircs.jpg',
   },
   'focas':  { 
     name:'FOCAS',  
@@ -250,7 +267,8 @@ const INSTRUMENTS = {
     role:'Optical camera and spectrograph', 
     shortRole:'Optical imaging/spectra',
     description:'The Faint Object Camera and Spectrograph covers optical imaging and spectroscopy of faint targets.', 
-    icon:'🔬' 
+    icon:'🔬',
+    image:'/assets/instruments/focus.jpg',
   },
   'comics': { 
     name:'COMICS', 
@@ -262,7 +280,8 @@ const INSTRUMENTS = {
     role:'Mid-infrared camera and spectrometer', 
     shortRole:'Mid-IR imaging',
     description:'The Cooled Mid-Infrared Camera and Spectrometer observes warm dust in the mid-infrared.', 
-    icon:'🔬' 
+    icon:'🔬',
+    image:'/assets/instruments/comics.jpg',
   },
 };
 

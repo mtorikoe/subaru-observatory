@@ -10,7 +10,7 @@
   --panel:   #e8eef5;
   --p2:      #d4e0ed;
   --border:  #c0cfe0;
-  --accent:  #1a5fa8;
+  --accent:  #1a2530;
   --gold:    #b07800;
   --green:   #1a7a32;
   --red:     #c0222a;
@@ -221,6 +221,7 @@ nav {
 .construction-wrap {
   flex:1; display:flex; flex-direction:column;
   min-width:0; background:var(--deep); border-left:1px solid var(--border);
+  min-height:0; overflow:hidden;
 }
 .construction-header {
   font-size:10px; letter-spacing:.1em; color:var(--muted);
@@ -228,7 +229,7 @@ nav {
   padding:6px 10px; border-bottom:1px solid var(--border);
   flex-shrink:0; background:var(--panel);
 }
-#construction-canvas { flex:1; display:block; width:100%; background:var(--canvas-bg); }
+#construction-canvas { flex:1; display:block; width:100%; background:var(--canvas-bg);min-height:0; height:100%;}
 
 /* ── RESULT BANNER — fixed to bottom of screen, never affects layout ── */
 #result-banner {

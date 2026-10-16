@@ -26,7 +26,7 @@ function generateField() {
       ...n,
       fx, fy,           // ← fractions, not pixels
       css: sp.css,
-      size: 4 + Math.random() * 3,
+      size: 2.5 + Math.random() * 1.5,
       phi: Math.random() * Math.PI * 2,
       isNamed: true,
     });
@@ -59,7 +59,7 @@ function generateField() {
     stars.push({
       id: 'gen-' + i,
       fx, fy, bprp, css: sp.css,
-      size: 2.5 + Math.random() * 4,
+      size: 1.2 + Math.random() * 2.2,
       phi: Math.random() * Math.PI * 2,
       companion: hasDisk ? 'disk' : hasPlanet ? 'planet' : null,
       planetVisible: hasDisk || hasPlanet,
@@ -83,7 +83,7 @@ function generateGaiaField() {
       ...g,
       fx, fy,
       css: sp.css,
-      size: Math.max(2, 7 - g.gmag * 0.35),
+      size: Math.max(1.2, 4.5 - g.gmag * 0.25),
       phi: Math.random() * Math.PI * 2,
       companion: (g.seeds && g.name) ? 'disk'
                : (g.bprp > 2.2 && Math.random() < 0.5) ? 'planet' : null,
@@ -114,15 +114,24 @@ function renderStarfield() {
   ctx.fillRect(0, 0, W, H);
 
   // Dim background stars (regenerated when size changes)
-  if (!renderStarfield._bg) {
-    renderStarfield._bg = Array.from({length:180}, () => ({
-      fx: Math.random(), fy: Math.random(),
-      r:  Math.random()*.6+.1, op: Math.random()*.2+.02,
-    }));
+    if (!renderStarfield._bg) {
+    renderStarfield._bg = Array.from({length:700}, () => {   // 180 → 700
+      const m = Math.pow(Math.random(), 3);                  // 暗い星が多く、明るい星は少し
+      return {
+        fx: Math.random(), fy: Math.random(),
+        r:  0.3 + m*1.1,
+        op: 0.15 + m*0.6,
+        hue: Math.random(),
+      };
+    });
   }
-  renderStarfield._bg.forEach(s => {
+    renderStarfield._bg.forEach(s => {
+    const c = s.hue < 0.15 ? '170,190,255'
+            : s.hue < 0.75 ? '230,238,255'
+            : s.hue < 0.90 ? '255,225,170'
+            :                '255,180,130';
     ctx.beginPath(); ctx.arc(s.fx*W, s.fy*H, s.r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(200,220,255,${s.op})`; ctx.fill();
+    ctx.fillStyle = `rgba(${c},${s.op})`; ctx.fill();
   });
 
 
@@ -138,9 +147,9 @@ function renderStarfield() {
     const isSel = G.selectedStar && G.selectedStar.id === s.id;
 
     // Glow
-    const g = ctx.createRadialGradient(px, py, 0, px, py, rad * 3.2);
+    const g = ctx.createRadialGradient(px, py, 0, px, py, rad * 2.4);
     g.addColorStop(0, s.css + 'cc'); g.addColorStop(1, s.css + '00');
-    ctx.beginPath(); ctx.arc(px, py, rad * 3.2, 0, Math.PI*2);
+    ctx.beginPath(); ctx.arc(px, py, rad * 2.4, 0, Math.PI*2);
     ctx.fillStyle = g; ctx.fill();
 
     // Core
@@ -207,7 +216,7 @@ sfCvs.addEventListener('click', e => {
   renderStarView();
   // Re-enable Observe if instruments are already chosen
   setButtonStates();
-  updateInstructions(G.selectedInstruments.length > 0 ? 2 : 1);
+  updateInstructions(G.selectedInstruments.length > 0 ? 7 : 1);
 });
 
 sfCvs.addEventListener('touchend', e => {
