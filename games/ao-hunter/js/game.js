@@ -15,7 +15,7 @@ const INSTRUCTIONS = [
 ];
 
 function updateInstructions(step) {
-  const el = document.getElementById('instruction-bar');
+  const el = document.getElementById('instruction-text');
   if (el) el.textContent = (INSTRUCTIONS[step]||INSTRUCTIONS[0]).text;
 }
 
@@ -32,6 +32,33 @@ function onInstrumentsChanged() {
   const has = G.selectedInstruments.length > 0;
   if (G.selectedStar) updateInstructions(has ? 7 : 1);   // star chosen
   else                updateInstructions(has ? 8 : 0);   // no star yet
+}
+
+// --- score board ------------------------------------------------------
+function updateScoreboard(gain) {
+  const v = document.getElementById('score-value');
+  if (v) v.textContent = G.score.toLocaleString();
+  const g = document.getElementById('score-gain');
+  if (g && gain) {
+    g.textContent = '+' + gain;
+    g.classList.remove('show'); void g.offsetWidth; g.classList.add('show');   // restart animation
+  }
+}
+
+function statsHTML(pts) {
+  const s = G.stats;
+  const acquired = Math.max(0, G.unlockedInstruments.length - STARTING_INSTRUMENTS.length);
+  return `
+    <div class="result-stats">
+      ${pts ? `<div class="stat-gain">+${pts} points</div>` : ''}
+      <div class="stat-grid">
+        <div><b>${G.score.toLocaleString()}</b><span>Total score</span></div>
+        <div><b>${s.observations}</b><span>Observations</span></div>
+        <div><b>${s.discoveries}</b><span>Discoveries</span></div>
+        <div><b>${acquired}</b><span>Instruments</span></div>
+        <div><b>${Math.round(s.bestClarity*100)}%</b><span>Best clarity</span></div>
+      </div>
+    </div>`;
 }
 
 // ── LAYOUT ────────────────────────────────────────────────
@@ -90,6 +117,9 @@ function triggerObservation() {
     showResultBanner(result);
     setButtonStates();   // update after _svObserved becomes true
 
+    try { recordObservation(result); }    // scoring can fail without freezing the game
+    catch (e) { console.error('score error', e); }
+
     if (!result.success) { updateInstructions(2); return; }
     if (!result.discovered) { updateInstructions(6); return; }
     // companion visible → handled by companion click in starview.js
@@ -101,19 +131,24 @@ function confirmNoPlanet() {
   _stopPulse?.();
   const npBtn = document.getElementById('no-planet-btn');
   if (npBtn) npBtn.style.display='none';
-  showNoPlanetOverlay();
+  const star = G.selectedStar;
+  const hasComp = !!(star && (star.companion || star.planetVisible));
+  const pts = recordNoCompanion();
+  showNoPlanetOverlay(pts, hasComp);
 }
 
-function showNoPlanetOverlay() {
+function showNoPlanetOverlay(pts, hasComp) {
   const overlay = document.getElementById('reward-overlay');
   if (!overlay) return;
+  const msg = hasComp
+    ? 'No companion is visible with this setup, but this star may be hiding one. Try stronger instruments!'
+    : 'Correct — no companion is visible around this star.'
+      + (pts ? '' : '<br>Get clarity above 60% to earn points for a sure answer.');
   overlay.innerHTML = `
     <div class="reward-box">
       <div class="reward-title" style="color:var(--accent)">No Exoplanet Detected</div>
-      <div class="reward-result">
-        Correct — no companion is visible with this telescope configuration.<br>
-        Try a different star, or unlock more powerful instruments to look deeper.
-      </div>
+      <div class="reward-result">${msg}</div>
+      ${statsHTML(pts)}
       <button class="reward-btn" onclick="closeNoPlanetOverlay()">Continue observing →</button>
     </div>
   `;
@@ -160,6 +195,7 @@ function showRewardScreen(newInstrId, result) {
       <div class="reward-title">✨ Exoplanet Confirmed!</div>
       <div class="reward-result">${result.message}</div>
       ${stageMsg}
+      ${statsHTML(result.points)}v
       ${instr ? `
         <div class="reward-new">New instrument unlocked:</div>
         <div class="reward-instr" style="border-color:${instr.color};">
@@ -226,6 +262,7 @@ function init() {
     sessionStorage.removeItem('ao_demo'); activateDemoMode();
   } else { loadProgress(); }
   checkStageSwitch();
+  updateScoreboard();
   renderLayout();
   if (G.stage===2) generateGaiaField(); else generateField();
   renderInstrumentCarousel(); renderInstrumentPallet();

@@ -58,7 +58,14 @@
 
   <!-- INSTRUCTION BAR — fixed auto height, never stretches.
        Drag this bar to resize upper vs lower split. -->
-  <div id="instruction-bar">Choose a star from the field on the left.</div>
+  <div id="instruction-bar">
+    <div id="instruction-text">Choose a star from the field on the left.</div>
+    <div id="score-board">
+      <span class="sb-label">SCORE</span>
+      <span id="score-value">0</span>
+      <span id="score-gain"></span>
+    </div>
+  </div>
 
   <!-- LOWER ROW: carousel | construction -->
   <div class="lower-row">

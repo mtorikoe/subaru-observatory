@@ -234,7 +234,8 @@ svCvs?.addEventListener('click', e => {
       _svCompanionClickable=false; _stopPulse(); svCvs._companionX=-1;
       const result=evaluateObservation();
       result.discovered=true;
-      G.successCount++; saveProgress();
+      try { result.points = recordDiscovery(G.selectedStar); }
+      catch (e) { console.error('score error', e); }       G.successCount++; saveProgress();
       showRewardScreen(unlockNextInstrument(), result);
     }
   }

@@ -4,6 +4,12 @@
 
 const STORAGE_KEY = 'ao_hunter_progress';
 
+const SCORE = {
+  noCompanion: 10,
+  discovery: { browndwarf: 300, planet: 500, disk: 300 },
+  clarity: [ { min:1.0, pts:100 }, { min:0.7, pts:70 }, { min:0.5, pts:50 } ],  // highest first
+};
+
 const G = {
   stage: 1,
   demoMode: false,
@@ -16,6 +22,9 @@ const G = {
   starFieldExpanded: true,   // true when no star chosen yet
   observationRunning: false,
   observationComplete: false,
+  score: 0,
+  stats: { observations: 0, discoveries: 0, bestClarity: 0 },
+  lastResult: null,
 };
 
 // ── PERSISTENCE ────────────────────────────────────────────
@@ -26,6 +35,8 @@ function saveProgress() {
       stage: G.stage,
       unlockedInstruments: G.unlockedInstruments,
       successCount: G.successCount,
+      score: G.score,
+      stats: G.stats,
     }));
   } catch(e) { /* localStorage may be unavailable */ }
 }
@@ -38,6 +49,8 @@ function loadProgress() {
     G.stage = p.stage || 1;
     G.unlockedInstruments = p.unlockedInstruments || [...STARTING_INSTRUMENTS];
     G.successCount = p.successCount || 0;
+    G.score = p.score || 0;                                                   // ← loadProgress の中
+    G.stats = Object.assign({ observations:0, discoveries:0, bestClarity:0 }, p.stats);
   } catch(e) { /* ignore corrupt data */ }
 }
 
@@ -50,6 +63,8 @@ function resetProgress() {
   G.selectedStar = null;
   G.starFieldExpanded = true;
   G.observationComplete = false;
+  G.score = 0;
+  G.stats = { observations:0, discoveries:0, bestClarity:0 };
 }
 
 function activateDemoMode() {
@@ -166,4 +181,37 @@ function evaluateObservation() {
 function getSpectralEntry(bprp) {
   return STAR_COLOR_TABLE.find(e => bprp >= e.bprMin && bprp < e.bprMax)
       || STAR_COLOR_TABLE[STAR_COLOR_TABLE.length - 1];
+}
+
+function addScore(pts) {
+  if (!pts) return;
+  G.score += pts;
+  saveProgress();
+  updateScoreboard(pts);
+}
+
+// Called once per Observe, after evaluateObservation()
+function recordObservation(result) {
+  G.stats.observations++;
+  G.stats.bestClarity = Math.max(G.stats.bestClarity, result.clarity);
+  G.lastResult = result;
+  const tier = SCORE.clarity.find(t => result.clarity >= t.min - 0.001);
+  addScore(tier ? tier.pts : 0);
+}
+
+// Called when the player clicks the companion
+function recordDiscovery(star) {
+  G.stats.discoveries++;
+  const pts = SCORE.discovery[star.companion] ?? SCORE.discovery.disk;
+  addScore(pts);
+  return pts;
+}
+
+// Called when the player clicks "No exoplanet visible"
+function recordNoCompanion() {
+  const star = G.selectedStar;
+  const hasComp = star && (star.companion || star.planetVisible);
+  const pts = (G.lastResult && G.lastResult.success && !hasComp) ? SCORE.noCompanion : 0;
+  addScore(pts);
+  return pts;
 }

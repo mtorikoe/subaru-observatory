@@ -27,9 +27,9 @@ const MOUNT_OF = {
 
 // Fixed display order in the pallet (left to right, always)
 const PALLET_ORDER = [
-  'suprime-cam','hsc',
+  'suprime-cam','hsc','fmos',
   'hds','ird','pfs',
-  'moircs','fmos',
+  'moircs','ircs','focas','comics',
   'ao36','ao188','ao3k',
   'ciao','hiciao','scexao',
   'charis','vampires','focus',
@@ -48,6 +48,11 @@ const INSTRUMENTS = {
     description: 'Suprime-Cam gave Subaru one of the widest fields of view of any 8-metre telescope. Its 10,000×8,000 pixel mosaic CCD can image a region the size of the full Moon in a single exposure.',
     icon: '🔭',
     image:'/assets/instruments/suprime-cam.jpg',
+    short: 'Suprime-Cam takes a giant photo of the sky.',
+    steps: [
+      { title:'Take a giant photo', fx:'wide',
+        text:'Suprime-Cam is a huge digital camera. One picture covers a patch of sky as big as the Moon, so we can spot lots of stars at once.' },
+    ],
   },
   'hsc': {
     name: 'HSC',
@@ -61,6 +66,11 @@ const INSTRUMENTS = {
     description: 'Hyper Suprime-Cam replaced Suprime-Cam with 116 CCDs covering 1.5 degrees — the size of three full Moons. The HSC Subaru Strategic Program has imaged a quarter of the entire sky.',
     icon: '🔭',
     image:'/assets/instruments/hsc.jpg',
+    short: 'HSC takes an even bigger photo of the sky.',
+    steps: [
+      { title:'Take an even bigger photo', fx:'wide',
+        text:'Hyper Suprime-Cam has 116 tiny camera chips working together. One picture covers three full Moons of sky!' },
+    ],
   },
   'hds': {
     name: 'HDS',
@@ -74,6 +84,13 @@ const INSTRUMENTS = {
     description: 'The High Dispersion Spectrograph splits starlight into its spectrum with extremely high resolution, allowing astronomers to detect a star\'s wobble caused by an orbiting planet — the radial velocity method.',
     icon: '📊',
     image:'/assets/instruments/hds.jpg',
+    short: 'HDS splits starlight into a very detailed rainbow.',
+    steps: [
+      { title:'Make a super-detailed rainbow', fx:'spectra',
+        text:'HDS works like a prism, but much more detailed. It spreads starlight into a long rainbow full of dark lines.' },
+      { title:'Watch for a wobble', fx:'wobble',
+        text:'If the lines slide back and forth, the star is wobbling. A planet orbiting the star could be tugging on it!' },
+    ],
   },
   'ird': {
     name: 'IRD',
@@ -87,6 +104,13 @@ const INSTRUMENTS = {
     description: 'The InfraRed Doppler instrument measures radial velocities of cool red M-type stars in near-infrared, where they shine most brightly. M-type stars are the most common planet hosts in the galaxy.',
     icon: '📊',
     image:'/assets/instruments/ird.jpg',
+    short: 'IRD finds planets by measuring a star\'s wobble.',
+    steps: [
+      { title:'Split infrared light', fx:'spectra',
+        text:'IRD splits a cool red star\'s infrared light into a very detailed rainbow.' },
+      { title:'Watch for a wobble', fx:'wobble',
+        text:'A planet\'s pull makes its star wobble a little. When the star moves toward us, the rainbow shifts; when it moves away, it shifts back. That is how we find planets without seeing them!' },
+    ],
   },
   'pfs': {
     name: 'PFS',
@@ -100,6 +124,13 @@ const INSTRUMENTS = {
     description: 'The Prime Focus Spectrograph deploys 2400 optical fibers across a 1.3-degree field, measuring spectra of thousands of stars simultaneously to survey galaxy evolution and stellar populations.',
     icon: '📊',
     image:'/assets/instruments/pfs.jpg',
+    short: 'PFS reads the rainbow of 2400 stars at once.',
+    steps: [
+      { title:'2400 fibers at once', fx:'fibers',
+        text:'The Prime Focus Spectrograph has 2400 glass fibers. It can look at thousands of stars and galaxies in a single night.' },
+      { title:'Split light into rainbows', fx:'spectra',
+        text:'Each star\'s light becomes a rainbow. The colors show what the star is made of and how fast it moves.' },
+    ],
   },
   'moircs': {
     name: 'MOIRCS',
@@ -113,6 +144,13 @@ const INSTRUMENTS = {
     description: 'The Multi-Object Infrared Camera and Spectrograph measures near-infrared spectra of many objects at once, confirming which stars in a young cluster are true members worth targeting for planet searches.',
     icon: '🔬',
     image:'/assets/instruments/moircs.jpg',
+    short: 'MOIRCS checks many stars in infrared light.',
+    steps: [
+      { title:'Look in infrared', fx:'ir',
+        text:'Infrared light passes through dust clouds. MOIRCS can see stars that are hidden from our eyes.' },
+      { title:'Check lots of stars at once', fx:'fibers',
+        text:'It checks many stars in one go to find out which ones are young, the best places to look for planets.' },
+    ],
   },
   'fmos': {
     name: 'FMOS',
@@ -126,6 +164,13 @@ const INSTRUMENTS = {
     description: 'The Fiber Multi-Object Spectrograph covers a wide field with 400 near-infrared fibers, surveying young stellar populations across entire star-forming regions to find the best planet-hunting candidates.',
     icon: '🔬',
     image:'/assets/instruments/fmos.jpg',
+    short: 'FMOS reads the light of hundreds of stars at once.',
+    steps: [
+      { title:'Catch light with fibers', fx:'fibers',
+        text:'FMOS has 400 thin glass fibers, like straws. Each one catches the light from a different star, all at the same time.' },
+      { title:'Make a rainbow for each star', fx:'spectra',
+        text:'The light is split into a rainbow, which tells us which young stars are worth a closer look.' },
+    ],
   },
   'ao36': {
     name: 'AO36',
@@ -139,6 +184,12 @@ const INSTRUMENTS = {
     description: 'AO36 was Subaru\'s first adaptive optics system, using 36 actuators on a deformable mirror to correct atmospheric blurring in real time. Combined with CIAO it produced the first direct images of disks at Subaru.',
     icon: '🌀',
     image:'/assets/instruments/ao36.jpg',
+    short: 'AO36 bends a mirror to calm the twinkling.',
+    steps: [
+      { title:'Calm the twinkle', fx:'dm',
+        text:'Air makes stars twinkle and blur, like heat shimmering over a hot road. AO36 has a mirror that bends in 36 spots to cancel the shimmer.' },
+    ],
+
   },
   'ao188': {
     name: 'AO188',
@@ -152,6 +203,11 @@ const INSTRUMENTS = {
     description: 'AO188 upgraded Subaru\'s adaptive optics to 188 actuators, dramatically reducing wavefront error. Paired with HiCIAO it became the backbone of the SEEDS survey — discovering GJ 504 b and imaging dozens of protoplanetary disks.',
     icon: '🌀',
     image:'/assets/instruments/ao188.jpg',
+    short: 'AO188 bends a mirror in 188 spots to sharpen stars.',
+    steps: [
+      { title:'Calm the twinkle, sharper', fx:'dm',
+        text:'AO188 has a bendy mirror with 188 tiny pushers. It wiggles hundreds of times every second to cancel the blur from the air.' },
+    ],
   },
   'ao3k': {
     name: 'AO3K',
@@ -165,6 +221,11 @@ const INSTRUMENTS = {
     description: 'AO3K is Subaru\'s most powerful adaptive optics system with 3228 actuators, providing extreme wavefront correction for all instruments on the infrared Nasmyth platform — the prerequisite for SCExAO coronagraphy.',
     icon: '🌀',
     image:'/assets/instruments/ao3k.jpg',
+    short: 'AO3K bends a mirror in 3228 spots for super-sharp stars.',
+    steps: [
+      { title:'Super-sharp stars', fx:'dm',
+        text:'AO3K has 3228 pushers on its bendy mirror. That makes it the sharpest helper yet, so even faint things next to a star can show up.' },
+    ],
   },
   'ciao': {
     name: 'CIAO',
@@ -178,6 +239,11 @@ const INSTRUMENTS = {
     description: 'CIAO (Coronagraphic Imager with Adaptive Optics) was Subaru\'s first high-contrast imager. With AO36 it directly imaged protoplanetary disks around AB Aurigae and SR 24 for the first time.',
     icon: '🌑',
     image:'/assets/instruments/ciao.jpg',
+    short: 'CIAO blocks the star so faint disks show up.',
+    steps: [
+      { title:'Block the glare', fx:'coro',
+        text:'A star is billions of times brighter than the things around it. CIAO puts a tiny disc over the star, like holding your hand up to block the Sun, so a faint disk can appear.' },
+    ],
   },
   'hiciao': {
     name: 'HiCIAO',
@@ -191,6 +257,13 @@ const INSTRUMENTS = {
     description: 'HiCIAO (High Contrast Coronographic Imager for Adaptive Optics) was built specifically for Subaru\'s SEEDS survey. With AO188 it discovered GJ 504 b — the coldest exoplanet ever directly imaged at the time.',
     icon: '🌑',
     image:'/assets/instruments/hiciao.jpg',
+    short: 'HiCIAO hides the star to find faint planets.',
+    steps: [
+      { title:'Hide the star', fx:'coro',
+        text:'HiCIAO blocks the star\'s bright light with a mask. Without the glare, we can see faint companions hiding right next to it.' },
+      { title:'Take a sharp picture', fx:'ir',
+        text:'It takes the picture in infrared light, where young, warm planets glow the best.' },
+    ],
   },
   'scexao': {
     name: 'SCExAO',
@@ -204,6 +277,15 @@ const INSTRUMENTS = {
     description: 'SCExAO combines a PIAA coronagraph with extreme adaptive optics to achieve the sharpest images ever taken at Subaru. It is the platform for CHARIS, VAMPIRES, and other next-generation instruments.',
     icon: '🌑',
     image:'/assets/instruments/scexao.jpg',
+    short: 'SCExAO smooths, blocks, and cleans up the star\'s light.',
+    steps: [
+      { title:'Smooth the wobble', fx:'dm',
+        text:'The air still makes starlight wobble a little. SCExAO\'s mirror moves thousands of times a second to smooth out what is left.' },
+      { title:'Block the glare', fx:'coro',
+        text:'A special mask covers the star, like holding up your hand to block the Sun, so faint things nearby can show up.' },
+      { title:'Catch the leftovers', fx:'lyot', note:'This part is called a Lyot stop.',
+        text:'A second ring stops the last bit of stray light around the edges. Now the picture is clean enough to spot a planet!' },
+    ],
   },
   'charis': {
     name: 'CHARIS',
@@ -217,6 +299,13 @@ const INSTRUMENTS = {
     description: 'CHARIS (Coronagraphic High Angular Resolution Imaging Spectrograph) images exoplanets across J+H+K bands simultaneously, producing a 3D data cube that reveals the atmosphere composition of directly imaged companions.',
     icon: '🌈',
     image:'/assets/instruments/charis.jpg',
+    short: 'CHARIS makes a rainbow for every spot in the picture.',
+    steps: [
+      { title:'A rainbow for every spot', fx:'spectra',
+        text:'CHARIS splits the light from each tiny spot of the picture into a rainbow. It is like a photo where every dot has its own rainbow.' },
+      { title:'Learn what it is made of', fx:'spectra',
+        text:'The colors in a planet\'s rainbow show what is in its air, like water or methane.' },
+    ],
   },
   'vampires': {
     name: 'VAMPIRES',
@@ -230,6 +319,13 @@ const INSTRUMENTS = {
     description: 'VAMPIRES (Visible Aperture Masking Polarimetric Imager for Resolved Exoplanetary Structures) uses visible light and polarimetry to reveal the detailed structure of protoplanetary disks — showing how dust scatters starlight.',
     icon: '🌈',
     image:'/assets/instruments/vampires.jpg',
+    short: 'VAMPIRES shows how dust scatters light.',
+    steps: [
+      { title:'Look through special sunglasses', fx:'pol',
+        text:'VAMPIRES uses a filter like polarized sunglasses. Light bouncing off dust behaves differently from starlight, so the dust stands out.' },
+      { title:'Reveal the dusty disk', fx:'pol',
+        text:'The dust shows up as arcs and rings, the leftover material where planets are born.' },
+    ],
   },
   'focus': {
     name: 'FOCUS',
@@ -243,6 +339,13 @@ const INSTRUMENTS = {
     description: 'FOCUS injects the SCExAO-corrected starlight into a single-mode fiber that feeds IRD, enabling extremely precise radial velocity measurements — combining direct imaging capability with Doppler planet detection.',
     icon: '🔗',
     image:'/assets/instruments/focus.jpg',
+    short: 'FOCUS sends starlight down a fiber to IRD.',
+    steps: [
+      { title:'Funnel the light', fx:'fiber',
+        text:'FOCUS squeezes the sharpened starlight into one hair-thin glass fiber, like pouring water through a funnel.' },
+      { title:'Send it to IRD', fx:'fiber',
+        text:'The fiber carries the light to the IRD spectrograph, which can measure tiny wobbles of the star.' },
+    ],
   },
   'ircs':   { 
     name:'IRCS',   
@@ -256,6 +359,13 @@ const INSTRUMENTS = {
     description:'The Infrared Camera and Spectrograph images and takes spectra of targets in the near-infrared.', 
     icon:'🔬',
     image:'/assets/instruments/ircs.jpg',
+    short: 'IRCS takes infrared pictures and rainbows.',
+    steps: [
+      { title:'See with heat vision', fx:'ir',
+        text:'IRCS is an infrared camera. Warm things like young planets and baby stars glow in infrared even when they look dark to us.' },
+      { title:'Make an infrared rainbow', fx:'spectra',
+        text:'It can also split that light into a rainbow to tell what the object is made of.' },
+    ],
   },
   'focas':  { 
     name:'FOCAS',  
@@ -269,6 +379,13 @@ const INSTRUMENTS = {
     description:'The Faint Object Camera and Spectrograph covers optical imaging and spectroscopy of faint targets.', 
     icon:'🔬',
     image:'/assets/instruments/focus.jpg',
+    short: 'FOCAS photographs very faint things in visible light.',
+    steps: [
+      { title:'Collect faint light', fx:'optical',
+        text:'FOCAS is a camera for visible light, the kind we see. It can collect light from very faint things, as if it were a night-vision camera.' },
+      { title:'Make a rainbow', fx:'spectra',
+        text:'It also splits light into a rainbow, to learn what faint stars and galaxies are made of.' },
+    ],
   },
   'comics': { 
     name:'COMICS', 
@@ -282,6 +399,13 @@ const INSTRUMENTS = {
     description:'The Cooled Mid-Infrared Camera and Spectrometer observes warm dust in the mid-infrared.', 
     icon:'🔬',
     image:'/assets/instruments/comics.jpg',
+    short: 'COMICS sees warm dust in mid-infrared light.',
+    steps: [
+      { title:'See warm dust', fx:'midir',
+        text:'COMICS looks in mid-infrared light, which warm dust gives off. It can see dust that is lit up by a young star.' },
+      { title:'Find where planets form', fx:'midir',
+        text:'Warm dust rings and clumps show where new planets may be growing.' },
+    ],
   },
 };
 
