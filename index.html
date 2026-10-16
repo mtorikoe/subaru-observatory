@@ -8,15 +8,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:     #ffffff;
-  --panel:  #f0f4f8;
-  --border: #c8d8e8;
-  --accent: #1a5fa8;
-  --text:   #111827;
-  --muted:  #4b5563;
-  --dim:    #6b7280;
-  --green:  #1a7a32;
-  --gold:   #b07800;
+  --bg:     #040810;
+  --panel:  #0d1f38;
+  --border: #1e3a5c;
+  --accent: #7ecfed;    /* light blue — visible on dark */
+  --text:   #e8f2ff;    /* bright white-blue for headings */
+  --muted:  #a8c8e8;    /* softer blue for body text */
+  --dim:    #5a8aaa;
+  --green:  #5ec47a;
+  --gold:   #f0c060;
 }
 
 body {
@@ -33,14 +33,6 @@ body {
   background-attachment: fixed;
 }
 
-/* Frosted overlay so text stays readable over any background image */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: rgba(255,255,255,0.82);
-  z-index: 0;
-}
 
 nav, main, footer { position: relative; z-index: 1; }
 
@@ -54,10 +46,7 @@ nav {
   backdrop-filter: blur(6px);
 }
 .logo {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: .02em;
+  color: #111827;
 }
 
 /* ── HERO ── */
@@ -120,8 +109,8 @@ main {
 }
 
 .game-card {
-  background: rgba(255,255,255,0.92);
-  border: 1.5px solid var(--border);
+  background: rgba(255, 255, 255, 0.18);   /* frosted, not solid white */
+  border: 1.5px solid rgba(255, 255, 255, 0.35);
   border-radius: 8px;
   padding: 28px 24px;
   display: flex;
@@ -131,14 +120,17 @@ main {
   max-width: 100%;
   text-decoration: none;
   color: inherit;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   transition: border-color .2s, transform .2s, box-shadow .2s;
-  backdrop-filter: blur(4px);
 }
 .game-card:hover {
-  border-color: var(--accent);
+  border-color: rgba(252, 253, 253, 0.35);
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(26,95,168,0.12);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
 }
+.card-title { color: var(--text); }
+.card-desc  { color: var(--muted); }
 
 .card-icon   { font-size: 32px; }
 .card-method {
@@ -176,16 +168,14 @@ footer {
 <body>
 
 <nav>
-  <div class="logo">Subaru Observatory</div>
+  <div class="logo">SubaruTelescope</div>
 </nav>
 
 <main>
-  <div class="hero-tag">Subaru Telescope · Mauna Kea, Hawaii · 4,205 m</div>
+  <div class="hero-tag">Mauna Kea, Hawaii · 4,205 m</div>
   <h1 class="hero-title">How Do Astronomers Find Planets?</h1>
-  <p class="hero-sub">Each experience below is built around a real instrument at Subaru Telescope.</p>
+  <p class="hero-sub">Experience how real instruments work at Subaru Telescope</p>
 
-  <!-- Section label -->
-  <div class="section-label">Beginner</div>
 
   <!-- Two cards centered -->
   <div class="game-grid">
@@ -229,7 +219,7 @@ footer {
 
 <footer>
   <span>Subaru Telescope · National Astronomical Observatory of Japan · Mauna Kea, Hawaii</span>
-  <span>Built for public outreach · PISCES / University of Hawaii at Hilo</span>
+  <span>University of Hawaii at Hilo</span>
 </footer>
 
 
