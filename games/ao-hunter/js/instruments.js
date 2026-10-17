@@ -28,7 +28,6 @@ function renderInstrumentCarousel() {
         <canvas class="instr-pic" data-id="${id}" width="130" height="64"></canvas>
       </div>
       <div class="instr-name">${instr.name}</div>
-      <div class="instr-role">${instr.description.slice(0,80)}…</div>
     `;
     card.addEventListener('click', () => {
       toggleInstrument(id);
@@ -42,6 +41,7 @@ function renderInstrumentCarousel() {
   rightBtn.style.opacity = carouselOffset < available.length - Math.ceil(VISIBLE_SLOTS) ? '1' : '0.25';
   const cardW = rail.querySelector('.instr-card')?.offsetWidth || 140;
   rail.scrollLeft = carouselOffset * (cardW + 10);
+  renderInstrumentDescription();
 }
 
 function carouselLeft() {
@@ -52,6 +52,18 @@ function carouselRight() {
   const available = PALLET_ORDER.filter(id => G.unlockedInstruments.includes(id));
   carouselOffset  = Math.min(available.length - Math.ceil(VISIBLE_SLOTS), carouselOffset + 1);
   renderInstrumentCarousel();
+}
+
+function renderInstrumentDescription() {
+  const box = document.getElementById('instr-desc');
+  if (!box) return;
+  const instr = G.lastPicked && INSTRUMENTS[G.lastPicked];
+  if (!instr) {
+    box.innerHTML = '<span class="desc-empty">Click an instrument to see what it does.</span>';
+    return;
+  }
+  const kid = (typeof KID_DESC !== 'undefined' && KID_DESC[G.lastPicked]) || instr.short || instr.shortRole;
+  box.innerHTML = `<div class="desc-text">${kid}</div>`;
 }
 
 // ── INSTRUMENT PALLET (order column, upper right) ──────────
@@ -88,6 +100,7 @@ function renderInstrumentPallet() {
   resetBtn.textContent = 'Reset telescope';
   resetBtn.onclick     = () => {
     G.selectedInstruments = [];
+    G.lastPicked = null;
     renderInstrumentPallet();
     renderInstrumentCarousel();
     renderConstructionView();

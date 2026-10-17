@@ -409,6 +409,29 @@ const INSTRUMENTS = {
   },
 };
 
+// One short sentence per instrument, for elementary students
+const KID_DESC = {
+  'suprime-cam': 'A giant camera that takes a wide photo of the sky.',
+  'hsc':         'An even bigger camera that photographs a huge part of the sky.',
+  'fmos':        'Uses 400 glass fibers to read the light of many stars at once.',
+  'pfs':         'Uses 2400 glass fibers to study thousands of stars and galaxies at once.',
+  'hds':         'Spreads starlight into a rainbow to spot planets tugging on a star.',
+  'ird':         'Watches a star wobble in infrared light to find planets.',
+  'moircs':      'An infrared camera that sees through dust to find young stars.',
+  'ircs':        'An infrared camera that sees warm things, like young planets.',
+  'focas':       'A camera for very faint things, like far-away stars and galaxies.',
+  'comics':      'Sees the warm dust around young stars, where planets are born.',
+  'ao36':        'A bendy mirror that calms the twinkling of stars.',
+  'ao188':       'A bendy mirror with 188 pushers that makes stars sharper.',
+  'ao3k':        'A bendy mirror with 3228 pushers for the sharpest stars.',
+  'ciao':        'Blocks a star\'s bright light so faint disks nearby can show up.',
+  'hiciao':      'Hides the star\'s glare so faint planets nearby can be seen.',
+  'scexao':      'Cleans up and blocks starlight so even faint planets show up.',
+  'charis':      'Makes a rainbow for every spot to learn what a planet is made of.',
+  'vampires':    'Uses filters like polarized sunglasses to see dust around stars.',
+  'focus':       'Sends starlight through a thin glass fiber to the IRD instrument.',
+};
+
 // Unlock sequence — instruments awarded after each successful observation
 const UNLOCK_SEQUENCE = [
   // After 1st success:

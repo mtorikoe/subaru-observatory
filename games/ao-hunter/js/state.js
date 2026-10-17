@@ -25,6 +25,7 @@ const G = {
   score: 0,
   stats: { observations: 0, discoveries: 0, bestClarity: 0 },
   lastResult: null,
+  lastPicked: null,
 };
 
 // ── PERSISTENCE ────────────────────────────────────────────
@@ -87,6 +88,7 @@ function toggleInstrument(id) {
   if (idx !== -1) {
     // Deselect
     G.selectedInstruments.splice(idx, 1);
+    if (G.lastPicked === id) G.lastPicked = null;
   } else {
     // Select — remove any existing selection from same group
     const group = instr.group;
@@ -95,6 +97,7 @@ function toggleInstrument(id) {
       sel => !groupMembers.includes(sel)
     );
     G.selectedInstruments.push(id);
+    G.lastPicked = id; 
     // Re-sort to fixed pallet order
     G.selectedInstruments.sort(
       (a,b) => PALLET_ORDER.indexOf(a) - PALLET_ORDER.indexOf(b)
@@ -163,7 +166,7 @@ function evaluateObservation() {
   // Discovery
   const hasCompanion = star.companion || star.planetVisible;
   const discoveryMsg = !hasCompanion
-    ? 'Clean image obtained — no companion detected around this star.'
+    ? ''
     : clarity > 0.7
     ? (star.companion === 'disk'
         ? 'Wonderful imaging! A protoplanetary disk is visible around this star!'
@@ -171,7 +174,7 @@ function evaluateObservation() {
     : 'Looks nicer! Improve your instrument combination for an even clearer image.';
 
   return {
-    success: clarity > 0.6 && (hasCompanion ? true : true),
+    success: clarity > 0.6,
     clarity,
     message: discoveryMsg,
     discovered: hasCompanion && clarity > 0.6,

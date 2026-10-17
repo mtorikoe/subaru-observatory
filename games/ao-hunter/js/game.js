@@ -113,16 +113,13 @@ function triggerObservation() {
   animateObservationSteps(() => {
     const result = evaluateObservation();
     G.observationComplete = true;
-    revealStarView(result.clarity);
-    showResultBanner(result);
-    setButtonStates();   // update after _svObserved becomes true
-
-    try { recordObservation(result); }    // scoring can fail without freezing the game
-    catch (e) { console.error('score error', e); }
+    revealStarView(result.clarity);          // first, so "Observing…" always disappears
+    try { showResultBanner(result); } catch (e) { console.error(e); }
+    try { recordObservation(result); }  catch (e) { console.error(e); }
+    setButtonStates();
 
     if (!result.success) { updateInstructions(2); return; }
     if (!result.discovered) { updateInstructions(6); return; }
-    // companion visible → handled by companion click in starview.js
   });
 }
 

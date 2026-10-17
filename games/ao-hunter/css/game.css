@@ -287,6 +287,16 @@ nav {
 }
 #construction-canvas { flex:1; display:block; width:100%; background:var(--canvas-bg);min-height:0; height:100%;}
 
+.carousel-wrap { min-height:0; }
+.carousel-body { min-height:0; }
+#instr-desc {
+  flex-shrink:0; margin:0 10px 8px; padding:8px 12px; min-height:56px;
+  background:#fff; color:var(--text);
+  border:none; border-radius:4px;
+}
+.desc-text  { font-size:20px; line-height:1.4; }
+.desc-empty { font-size:13px; color:var(--dim); }
+
 /* ── RESULT BANNER — fixed to bottom of screen, never affects layout ── */
 #result-banner {
   position:fixed; bottom:0; left:0; right:0; z-index:50;
