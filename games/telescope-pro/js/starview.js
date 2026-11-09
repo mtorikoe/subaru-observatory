@@ -169,34 +169,29 @@ function _drawTargetMarkers(ctx, W, H) {
     if (p[0] < 0 || p[0] > W || p[1] < 0 || p[1] > H) return;
 
     const isSelected = G.selectedTarget && G.selectedTarget.id === t.id;
-    if (!showAll && !isSelected) return;
+    // Once a target is locked, other targets stay visible (dimmed) so the
+    // player can still switch by clicking them — hidden during observation.
+    if (!showAll && !isSelected && (G.observationRunning || _svObserved)) return;
 
     const revealed = G.revealedTargets.includes(t.id);
-    const col = isSelected ? '#f0c060' : revealed ? '#60c080' : '#7ecfed';
-
-    const pulse = 0.85 + 0.15*Math.sin(Date.now() / 420);
-    const r = (isSelected ? 14 : 8) * pulse;
+    const col = isSelected ? '#f0c060' : revealed ? '#60c080' : '#ffffff';
+    ctx.globalAlpha = (showAll || isSelected || _hoverTargetId === t.id) ? 1 : 0.45;
 
     ctx.beginPath();
-    ctx.arc(p[0], p[1], r, 0, Math.PI*2);
-    ctx.strokeStyle = col;
-    ctx.lineWidth   = isSelected ? 2 : 1.2;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(p[0], p[1], 1.5, 0, Math.PI*2);
+    ctx.arc(p[0], p[1], isSelected ? 3.5 : 2.5, 0, Math.PI*2);
     ctx.fillStyle = col;
     ctx.fill();
 
     if (isSelected || _cam.zoom > 8 || _hoverTargetId === t.id) {
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
       const label = t.name;
-      ctx.font = 'bold 0.75em Times New Roman';
+      ctx.font = '0.75em Times New Roman';
       const tw = ctx.measureText(label).width + 10;
       ctx.fillRect(p[0] + 10, p[1] - 8, tw, 14);
       ctx.fillStyle = col;
       ctx.fillText(label, p[0] + 15, p[1] + 3);
     }
+    ctx.globalAlpha = 1;
   });
 
   if (showAll || (G.selectedTarget && !_svObserved)) {
@@ -216,7 +211,7 @@ function _drawNavOverlay(ctx, W, H) {
 
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(0, 0, 230, 22);
-  ctx.fillStyle = 'rgba(126,207,237,0.9)';
+  ctx.fillStyle = '#ffffff';
   ctx.font = '0.8em Times New Roman';
   const raH  = (_cam.ra / 15).toFixed(2);
   const decS = (_cam.dec >= 0 ? '+' : '') + _cam.dec.toFixed(2);
@@ -226,7 +221,7 @@ function _drawNavOverlay(ctx, W, H) {
   ctx.fillStyle = 'rgba(220,220,220,0.75)';
   ctx.font = '0.75em Times New Roman';
   ctx.textAlign = 'center';
-  ctx.fillText('Drag to pan · Scroll to zoom · Click a target to center · Or pick one from the left', W/2, H-7);
+  ctx.fillText('Drag to pan · Scroll to zoom · Click a target to select it · Or pick one from the left', W/2, H-7);
   ctx.textAlign = 'left';
 }
 
@@ -314,21 +309,27 @@ function _drawTargetPhoto(ctx, W, H) {
 let _hoverTargetId = null;
 let _dragState = null;
 
+const _DRAG_THRESHOLD = 5;   // px of movement before a press becomes a pan
+
 svCvs?.addEventListener('mousedown', e => {
-  if (G.selectedTarget) return;
+  if (e.button !== 0) return;
   const r = svCvs.getBoundingClientRect();
-  _dragState = { x: e.clientX - r.left, y: e.clientY - r.top, ra: _cam.ra, dec: _cam.dec };
+  _dragState = { x: e.clientX - r.left, y: e.clientY - r.top, ra: _cam.ra, dec: _cam.dec, moved: false };
 });
 svCvs?.addEventListener('mousemove', e => {
   const r = svCvs.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
   if (_dragState) {
-    const W = svCvs.width, H = svCvs.height;
-    const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
     const dx = x - _dragState.x;
     const dy = y - _dragState.y;
+    if (!_dragState.moved && Math.hypot(dx, dy) < _DRAG_THRESHOLD) return;
+    _dragState.moved = true;
+    if (G.selectedTarget) return;            // view is locked on the target
+    const W = svCvs.width, H = svCvs.height;
+    const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
     _cam.ra  = ((_dragState.ra  - dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
     _cam.dec = Math.max(-89.5, Math.min(89.5, _dragState.dec + dy * degPerPx));
+    svCvs.style.cursor = 'grabbing';
     renderStarView();
   } else {
     const wasHover = _hoverTargetId;
@@ -337,7 +338,17 @@ svCvs?.addEventListener('mousemove', e => {
     if (wasHover !== _hoverTargetId) renderStarView();
   }
 });
-window.addEventListener('mouseup', () => { _dragState = null; });
+window.addEventListener('mouseup', e => {
+  const st = _dragState;
+  _dragState = null;
+  if (!st || st.moved || e.target !== svCvs) return;
+  // A press-and-release without panning is a click: select the target under it
+  const r = svCvs.getBoundingClientRect();
+  _pickTargetAt(e.clientX - r.left, e.clientY - r.top);
+});
+svCvs?.addEventListener('mouseleave', () => {
+  if (_hoverTargetId) { _hoverTargetId = null; renderStarView(); }
+});
 
 svCvs?.addEventListener('wheel', e => {
   if (G.selectedTarget) return;
@@ -347,51 +358,66 @@ svCvs?.addEventListener('wheel', e => {
   renderStarView();
 }, { passive: false });
 
-svCvs?.addEventListener('click', e => {
-  const r = svCvs.getBoundingClientRect();
-  const x = e.clientX - r.left, y = e.clientY - r.top;
+// Select (never deselect) the target at canvas point (x, y).
+// Deselecting is done from the left panel, so a double-click on a marker
+// can't select-then-immediately-unselect it.
+function _pickTargetAt(x, y) {
+  if (G.observationRunning) return;
   const hit = _findTargetAt(x, y);
-  if (hit && typeof selectTarget === 'function') selectTarget(hit);
-});
+  if (!hit || typeof selectTarget !== 'function') return;
+  if (G.selectedTarget && G.selectedTarget.id === hit) return;
+  const t = TARGETS.find(t => t.id === hit);
+  if (t) G.selectedCategory = t.category;   // open its category in the left list
+  selectTarget(hit);
+}
 
 function _findTargetAt(x, y) {
   if (typeof TARGET_COORDS === 'undefined') return null;
+  if (G.selectedTarget && (G.observationRunning || _svObserved)) return null;
   const W = svCvs.width, H = svCvs.height;
-  let bestId = null, bestD = 18;
+  let bestId = null, bestD = 20;
   TARGETS.forEach(t => {
     const coords = TARGET_COORDS[t.id];
     if (!coords) return;
     const p = _project(coords[0], coords[1], W, H);
-    if (!p) return;
+    if (!p || p[0] < 0 || p[0] > W || p[1] < 0 || p[1] > H) return;
     const d = Math.hypot(p[0] - x, p[1] - y);
     if (d < bestD) { bestD = d; bestId = t.id; }
   });
   return bestId;
 }
 
-// Touch support
+// Touch support — tap selects a target, drag pans
 svCvs?.addEventListener('touchstart', e => {
-  if (G.selectedTarget) return;
   if (e.touches.length !== 1) return;
   const t = e.touches[0];
   const r = svCvs.getBoundingClientRect();
-  _dragState = { x: t.clientX - r.left, y: t.clientY - r.top, ra: _cam.ra, dec: _cam.dec };
+  _dragState = { x: t.clientX - r.left, y: t.clientY - r.top, ra: _cam.ra, dec: _cam.dec, moved: false };
 }, { passive: true });
 svCvs?.addEventListener('touchmove', e => {
   if (!_dragState || e.touches.length !== 1) return;
   const t = e.touches[0];
   const r = svCvs.getBoundingClientRect();
   const x = t.clientX - r.left, y = t.clientY - r.top;
-  const W = svCvs.width, H = svCvs.height;
-  const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
   const dx = x - _dragState.x;
   const dy = y - _dragState.y;
+  if (!_dragState.moved && Math.hypot(dx, dy) < _DRAG_THRESHOLD) return;
+  _dragState.moved = true;
+  if (G.selectedTarget) return;
+  const W = svCvs.width, H = svCvs.height;
+  const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
   _cam.ra  = ((_dragState.ra  - dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
   _cam.dec = Math.max(-89.5, Math.min(89.5, _dragState.dec + dy * degPerPx));
   renderStarView();
   e.preventDefault();
 }, { passive: false });
-svCvs?.addEventListener('touchend', () => { _dragState = null; });
+svCvs?.addEventListener('touchend', e => {
+  const st = _dragState;
+  _dragState = null;
+  if (!st || st.moved) return;
+  e.preventDefault();                       // suppress the emulated mouse events
+  _pickTargetAt(st.x, st.y);
+});
 
 // Resize observer — re-render when the star canvas container changes
 if (typeof ResizeObserver !== 'undefined' && svCvs?.parentElement) {
