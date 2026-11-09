@@ -51,7 +51,8 @@ function _project(raDeg, decDeg, W, H) {
   const yr = (Math.cos(dec0)*Math.sin(dec) - Math.sin(dec0)*Math.cos(dec)*Math.cos(dRa)) / cosc;
   const fovRad = (90 / _cam.zoom) * d2r;
   const scale  = Math.min(W, H) / 2 / Math.tan(fovRad / 2);
-  return [W/2 + xr * scale, H/2 - yr * scale];
+  // East is to the LEFT (as seen looking up at the sky), so RA increases leftward
+  return [W/2 - xr * scale, H/2 - yr * scale];
 }
 
 // ── Public API ──────────────────────────────────────────
@@ -105,6 +106,7 @@ function renderStarView() {
   ctx.fillRect(0, 0, W, H);
 
   _drawSky(ctx, W, H);
+  _drawHoveredConstellation(ctx, W, H);
   _drawTargetMarkers(ctx, W, H);
 
   if (!G.selectedTarget) {
@@ -155,8 +157,139 @@ function _drawSky(ctx, W, H) {
   }
 }
 
+// ── Constellations (shown on hover) ─────────────────────
+// Data: window.UH_CONSTELLATIONS from assets/catalog/constellations.js
+const _const = { list: [], hover: null, mouse: null, key: '' };
+
+(function loadConstellations() {
+  const data = (typeof window !== 'undefined') ? window.UH_CONSTELLATIONS : null;
+  if (!Array.isArray(data)) {
+    console.warn('[UH] window.UH_CONSTELLATIONS not found — include assets/catalog/constellations.js before starview.js');
+    return;
+  }
+  // Subdivide boundary edges (≤2° steps, linear in RA/Dec) so edges that run
+  // along a line of constant Dec are followed correctly by the hit test and drawing.
+  _const.list = data.map(c => {
+    const pts = [];
+    const b = c.bounds;
+    for (let i = 0; i < b.length - 1; i++) {
+      const [ra1, de1] = b[i], [ra2, de2] = b[i + 1];
+      const dRa = ((ra2 - ra1 + 540) % 360) - 180;
+      const n = Math.max(1, Math.ceil(Math.max(Math.abs(dRa), Math.abs(de2 - de1)) / 2));
+      for (let k = 0; k < n; k++) {
+        pts.push([(ra1 + dRa * k / n + 360) % 360, de1 + (de2 - de1) * k / n]);
+      }
+    }
+    // Unit vector toward the boundary's mean direction — used to reject the
+    // antipodal false match that a spherical winding test can't tell apart.
+    let vx = 0, vy = 0, vz = 0;
+    pts.forEach(([ra, de]) => { const v = _vec(ra, de); vx += v[0]; vy += v[1]; vz += v[2]; });
+    const len = Math.hypot(vx, vy, vz) || 1;
+    return { ...c, poly: pts, axis: [vx/len, vy/len, vz/len] };
+  });
+})();
+
+function _vec(ra, dec) {
+  const d2r = Math.PI / 180;
+  const cd = Math.cos(dec*d2r);
+  return [cd*Math.cos(ra*d2r), cd*Math.sin(ra*d2r), Math.sin(dec*d2r)];
+}
+
+// Canvas point → [ra, dec] in degrees (inverse gnomonic)
+function _unproject(x, y, W, H) {
+  const d2r = Math.PI / 180;
+  const fovRad = (90 / _cam.zoom) * d2r;
+  const scale  = Math.min(W, H) / 2 / Math.tan(fovRad / 2);
+  const xr = -(x - W/2) / scale;
+  const yr = -(y - H/2) / scale;
+  const dec0 = _cam.dec * d2r;
+  const rho = Math.hypot(xr, yr);
+  if (rho < 1e-9) return [_cam.ra, _cam.dec];
+  const c = Math.atan(rho);
+  const dec = Math.asin(Math.cos(c)*Math.sin(dec0) + yr*Math.sin(c)*Math.cos(dec0)/rho);
+  const ra  = _cam.ra*d2r + Math.atan2(xr*Math.sin(c), rho*Math.cos(dec0)*Math.cos(c) - yr*Math.sin(dec0)*Math.sin(c));
+  return [((ra / d2r) % 360 + 360) % 360, dec / d2r];
+}
+
+// Spherical point-in-polygon: sum the bearing changes from the point to each
+// vertex. ±2π → inside. Works across RA 0h and around the poles. (It also
+// fires for the antipodal point — _findConstellationAt filters that out.)
+function _insidePoly(ra, dec, poly) {
+  const d2r = Math.PI / 180;
+  const sd = Math.sin(dec*d2r), cd = Math.cos(dec*d2r);
+  let total = 0, prev = null;
+  for (let i = 0; i <= poly.length; i++) {
+    const v = poly[i % poly.length];
+    const dRa = (v[0] - ra) * d2r;
+    const sv = Math.sin(v[1]*d2r), cv = Math.cos(v[1]*d2r);
+    const brg = Math.atan2(Math.sin(dRa)*cv, cd*sv - sd*cv*Math.cos(dRa));
+    if (prev !== null) {
+      let d = brg - prev;
+      if (d >  Math.PI) d -= 2*Math.PI;
+      if (d < -Math.PI) d += 2*Math.PI;
+      total += d;
+    }
+    prev = brg;
+  }
+  return Math.abs(total) > Math.PI;
+}
+
+function _findConstellationAt(x, y, W, H) {
+  const [ra, dec] = _unproject(x, y, W, H);
+  const v = _vec(ra, dec);
+  return _const.list.find(c =>
+    v[0]*c.axis[0] + v[1]*c.axis[1] + v[2]*c.axis[2] > 0 && _insidePoly(ra, dec, c.poly)
+  ) || null;
+}
+
+function _drawHoveredConstellation(ctx, W, H) {
+  _updateHoveredConstellation(W, H);
+  const c = _const.hover;
+  if (!c) return;
+
+  ctx.save();
+
+  // Faint dashed IAU boundary
+  ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  _strokePath(ctx, c.poly.concat([c.poly[0]]), W, H);
+  ctx.setLineDash([]);
+
+  // Stick figure
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  ctx.lineWidth = 1;
+  c.lines.forEach(seg => _strokePath(ctx, seg, W, H));
+
+  // Name — at the constellation's centre if visible, otherwise next to the cursor
+  let lp = _project(c.center[0], c.center[1], W, H);
+  if (!lp || lp[0] < 40 || lp[0] > W - 40 || lp[1] < 30 || lp[1] > H - 30) {
+    lp = [_const.mouse.x + 14, _const.mouse.y - 14];
+  }
+  const label = (c.en && c.en !== c.name) ? `${c.name} (${c.en})` : c.name;
+  ctx.font = 'italic 0.85em Times New Roman';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
+  const tw = ctx.measureText(label).width + 12;
+  ctx.fillRect(lp[0] - tw/2, lp[1] - 12, tw, 17);
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.fillText(label, lp[0], lp[1]);
+  ctx.restore();
+}
+
+function _strokePath(ctx, pts, W, H) {
+  ctx.beginPath();
+  let pen = false;
+  pts.forEach(pt => {
+    const p = _project(pt[0], pt[1], W, H);
+    if (!p) { pen = false; return; }
+    if (pen) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]);
+    pen = true;
+  });
+  ctx.stroke();
+}
+
 // ── Target markers ──────────────────────────────────────
-let _pulseFrameId = null;
 function _drawTargetMarkers(ctx, W, H) {
   if (typeof TARGET_COORDS === 'undefined') return;
   const showAll = !G.selectedTarget;
@@ -194,10 +327,6 @@ function _drawTargetMarkers(ctx, W, H) {
     ctx.globalAlpha = 1;
   });
 
-  if (showAll || (G.selectedTarget && !_svObserved)) {
-    cancelAnimationFrame(_pulseFrameId);
-    _pulseFrameId = requestAnimationFrame(() => renderStarView());
-  }
 }
 
 // ── Navigation overlay ─────────────────────────────────
@@ -319,6 +448,7 @@ svCvs?.addEventListener('mousedown', e => {
 svCvs?.addEventListener('mousemove', e => {
   const r = svCvs.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
+  _const.mouse = { x, y };
   if (_dragState) {
     const dx = x - _dragState.x;
     const dy = y - _dragState.y;
@@ -327,7 +457,7 @@ svCvs?.addEventListener('mousemove', e => {
     if (G.selectedTarget) return;            // view is locked on the target
     const W = svCvs.width, H = svCvs.height;
     const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
-    _cam.ra  = ((_dragState.ra  - dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
+    _cam.ra  = ((_dragState.ra  + dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
     _cam.dec = Math.max(-89.5, Math.min(89.5, _dragState.dec + dy * degPerPx));
     svCvs.style.cursor = 'grabbing';
     renderStarView();
@@ -335,7 +465,9 @@ svCvs?.addEventListener('mousemove', e => {
     const wasHover = _hoverTargetId;
     _hoverTargetId = _findTargetAt(x, y);
     svCvs.style.cursor = _hoverTargetId ? 'pointer' : (G.selectedTarget ? 'default' : 'grab');
-    if (wasHover !== _hoverTargetId) renderStarView();
+    const wasConst = _const.hover;
+    _updateHoveredConstellation();
+    if (wasHover !== _hoverTargetId || wasConst !== _const.hover) renderStarView();
   }
 });
 window.addEventListener('mouseup', e => {
@@ -347,8 +479,22 @@ window.addEventListener('mouseup', e => {
   _pickTargetAt(e.clientX - r.left, e.clientY - r.top);
 });
 svCvs?.addEventListener('mouseleave', () => {
-  if (_hoverTargetId) { _hoverTargetId = null; renderStarView(); }
+  const had = _hoverTargetId || _const.hover;
+  _hoverTargetId = null;
+  _const.mouse = null;
+  _const.hover = null;
+  if (had) renderStarView();
 });
+
+// Work out which constellation is under the cursor. The hit test re-runs only
+// when the cursor or the camera has moved.
+function _updateHoveredConstellation(W = svCvs.width, H = svCvs.height) {
+  if (!_const.mouse || !_const.list.length || _svObserved) { _const.hover = null; return; }
+  const key = `${_const.mouse.x},${_const.mouse.y},${_cam.ra},${_cam.dec},${_cam.zoom},${W},${H}`;
+  if (key === _const.key) return;
+  _const.key = key;
+  _const.hover = _findConstellationAt(_const.mouse.x, _const.mouse.y, W, H);
+}
 
 svCvs?.addEventListener('wheel', e => {
   if (G.selectedTarget) return;
@@ -406,7 +552,7 @@ svCvs?.addEventListener('touchmove', e => {
   if (G.selectedTarget) return;
   const W = svCvs.width, H = svCvs.height;
   const degPerPx = (90 / _cam.zoom) / Math.min(W, H);
-  _cam.ra  = ((_dragState.ra  - dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
+  _cam.ra  = ((_dragState.ra  + dx * degPerPx / Math.cos(_cam.dec * Math.PI/180)) + 360) % 360;
   _cam.dec = Math.max(-89.5, Math.min(89.5, _dragState.dec + dy * degPerPx));
   renderStarView();
   e.preventDefault();
