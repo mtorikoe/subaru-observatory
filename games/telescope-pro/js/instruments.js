@@ -229,6 +229,7 @@ function onInstrumentClick(id, e) {
   renderInstrumentCarousel();
   renderConstructionView();
   setButtonStates();
+  renderStarView();   // refresh the star-field instruction bar
 }
 
 function removeInstrument(id) {
@@ -238,6 +239,7 @@ function removeInstrument(id) {
   renderInstrumentCarousel();
   renderConstructionView();
   setButtonStates();
+  renderStarView();   // refresh the star-field instruction bar
 }
 
 // Transient error toast in the instr description box

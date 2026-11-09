@@ -385,12 +385,16 @@ function _drawTargetLabel(ctx, W, H) {
     ctx.textAlign = 'left';
   }
 
+  // Instruction bar along the bottom edge, clear of the centred target
   if (!_svObserved && !G.observationRunning) {
-    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, H/2 - 22, W, 44);
+    const msg = G.selectedInstruments.length === 0
+      ? 'Choose instruments, then click Observe  ·  Click the sky to deselect'
+      : 'Click Observe (or click the sky) to start observing';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, H - 28, W, 28);
     ctx.fillStyle = 'rgba(240,192,96,0.95)';
     ctx.font = 'bold 0.92em Times New Roman';
     ctx.textAlign = 'center';
-    ctx.fillText('Choose instruments, then click Observe', W/2, H/2 + 5);
+    ctx.fillText(msg, W/2, H - 9);
     ctx.textAlign = 'left';
   }
 
@@ -464,7 +468,7 @@ svCvs?.addEventListener('mousemove', e => {
   } else {
     const wasHover = _hoverTargetId;
     _hoverTargetId = _findTargetAt(x, y);
-    svCvs.style.cursor = _hoverTargetId ? 'pointer' : (G.selectedTarget ? 'default' : 'grab');
+    svCvs.style.cursor = (_hoverTargetId || _fieldAction()) ? 'pointer' : (G.selectedTarget ? 'default' : 'grab');
     const wasConst = _const.hover;
     _updateHoveredConstellation();
     if (wasHover !== _hoverTargetId || wasConst !== _const.hover) renderStarView();
@@ -476,7 +480,7 @@ window.addEventListener('mouseup', e => {
   if (!st || st.moved || e.target !== svCvs) return;
   // A press-and-release without panning is a click: select the target under it
   const r = svCvs.getBoundingClientRect();
-  _pickTargetAt(e.clientX - r.left, e.clientY - r.top);
+  _onFieldClick(e.clientX - r.left, e.clientY - r.top);
 });
 svCvs?.addEventListener('mouseleave', () => {
   const had = _hoverTargetId || _const.hover;
@@ -504,17 +508,31 @@ svCvs?.addEventListener('wheel', e => {
   renderStarView();
 }, { passive: false });
 
-// Select (never deselect) the target at canvas point (x, y).
-// Deselecting is done from the left panel, so a double-click on a marker
-// can't select-then-immediately-unselect it.
-function _pickTargetAt(x, y) {
+// Handle a click/tap on the star field at canvas point (x, y):
+//  • on a target that isn't the current one → select it
+//  • anywhere else, with a target locked:
+//      – no instruments installed → deselect the target
+//      – instruments installed    → start the observation (same as Observe)
+function _onFieldClick(x, y) {
   if (G.observationRunning) return;
   const hit = _findTargetAt(x, y);
-  if (!hit || typeof selectTarget !== 'function') return;
-  if (G.selectedTarget && G.selectedTarget.id === hit) return;
-  const t = TARGETS.find(t => t.id === hit);
-  if (t) G.selectedCategory = t.category;   // open its category in the left list
-  selectTarget(hit);
+  if (hit && (!G.selectedTarget || G.selectedTarget.id !== hit)) {
+    const t = TARGETS.find(t => t.id === hit);
+    if (t) G.selectedCategory = t.category;   // open its category in the left list
+    if (typeof selectTarget === 'function') selectTarget(hit);
+    return;
+  }
+  const action = _fieldAction();
+  if (action === 'deselect') selectTarget(G.selectedTarget.id);   // toggles it off
+  else if (action === 'observe') triggerObservation();
+}
+
+// What clicking empty sky would do right now: 'deselect', 'observe' or null
+function _fieldAction() {
+  if (!G.selectedTarget || G.observationRunning) return null;
+  if (G.selectedInstruments.length === 0) return _svObserved ? null : 'deselect';
+  const btn = document.getElementById('observe-btn');
+  return (btn && !btn.disabled && typeof triggerObservation === 'function') ? 'observe' : null;
 }
 
 function _findTargetAt(x, y) {
@@ -562,7 +580,7 @@ svCvs?.addEventListener('touchend', e => {
   _dragState = null;
   if (!st || st.moved) return;
   e.preventDefault();                       // suppress the emulated mouse events
-  _pickTargetAt(st.x, st.y);
+  _onFieldClick(st.x, st.y);
 });
 
 // Resize observer — re-render when the star canvas container changes
