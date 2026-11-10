@@ -19,7 +19,7 @@ const G = {
 // ── INSTRUMENT MUTEX GROUPS ────────────────────────────────
 // Only one instrument from each group can be installed at a time.
 const INSTRUMENT_GROUPS = {
-  prime: ['suprime-cam', 'hsc', 'fmos', 'pfs'],  // primary-focus cameras — only one fits
+  prime: ['suprime-cam', 'hsc', 'fmos' /*, 'pfs' */],  // primary-focus cameras — only one fits
   ao:    ['ao36', 'ao188', 'ao3k'],              // AO generations — newer supersedes older
   coro:  ['ciao', 'hiciao'],                     // coronagraphs — one at a time
 };

@@ -118,7 +118,7 @@ function _launchGame(id) {
     case 'hds':         return _game_hds();
     case 'ird':         return _game_ird();
     case 'fmos':        return _game_fmos();
-    case 'pfs':         return _game_pfs();
+    // case 'pfs':      return _game_pfs();   // PFS hidden for now
     case 'moircs':      return _game_moircs();
     case 'focas':       return _game_focas();
     case 'comics':      return _game_comics();
@@ -271,209 +271,128 @@ function _game_suprimeCam() {
 }
 
 // ──────────────────────────────────────────────────────────
-// HSC
-// A big circle field. A gun at bottom shoots moons.
-// Power gauge oscillates. Click at the right power so the
-// moon lands inside the field. Fill 9 moons to win.
+// HSC — Field-of-view quiz
+// Two fields of view drawn at the SAME scale: one holds a single
+// full Moon (Suprime-Cam), the other holds nine (HSC).
+// "Which view field is HSC?" A wrong pick locks that option and
+// reveals it as Suprime-Cam, so the second try always succeeds.
 // ──────────────────────────────────────────────────────────
 function _game_hsc() {
-  _setTeaches('HSC\'s field holds 9 full Moons across. Launch each Moon into the field at just the right power!');
+  _setTeaches('Hyper Suprime-Cam is the upgraded successor of Suprime-Cam. One shot covers 1.77 square degrees — about 9 full Moons, roughly 7× more sky than Suprime-Cam.');
+
+  const S = 170;          // each option canvas is S×S px
+  const moonR = 15;       // one full Moon — identical in both fields (same scale!)
+  const options = [
+    { id:'suprime', label:'Suprime-Cam', detail:'34′×27′ — about 1 full Moon', fieldR: moonR + 6, moons: 1 },
+    { id:'hsc',     label:'Hyper Suprime-Cam', detail:'1.5° wide — about 9 full Moons', fieldR: 58, moons: 9 },
+  ];
+  if (Math.random() < 0.5) options.reverse();   // don't always put the answer on the same side
 
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="320" style="display:block;margin:auto;cursor:pointer"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Click the cannon when the power gauge hits the green zone</div>`;
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%">
+      <div style="font-size:1.15em;font-weight:700;color:#fff;text-align:center">Which view field is HSC?</div>
+      <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap">
+        ${options.map((o, i) => `
+          <button class="mg-quiz-opt" data-i="${i}" style="background:#0a1220;border:2px solid #2a3a50;border-radius:8px;padding:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;font-family:inherit;transition:border-color .15s,opacity .15s">
+            <canvas width="${S}" height="${S}" style="display:block"></canvas>
+            <span class="mg-quiz-lbl" style="font-weight:700;font-size:0.95em">${String.fromCharCode(65 + i)}</span>
+            <span class="mg-quiz-det" style="font-size:0.75em;color:rgba(255,255,255,0.6);min-height:1.2em"></span>
+          </button>`).join('')}
+      </div>
+    </div>`;
 
-  const canvas = document.getElementById('mg-canvas');
-  const ctx    = canvas.getContext('2d');
-
-  const fieldCx = 180, fieldCy = 125, fieldR = 110; // big circle
-  const moonR   = 18;                                // each moon
-  const gunX    = 180, gunY = 285;                  // gun position
-  const goal    = 9;                                 // moons needed
-
-  // Real Moon photo (shared with Suprime-Cam game)
+  // Real Moon photo (shared with the Suprime-Cam game); falls back to a drawn Moon
   const moonImg = new Image();
-  let moonReady = false;
-  moonImg.onload  = () => { moonReady = true; };
-  moonImg.onerror = () => { moonReady = false; };
+  moonImg.onload = () => buttons.forEach((b, i) => drawOption(b, options[i]));
   moonImg.src = '/assets/minigame/moon.png';
 
-  function drawMoon(x, y, r) {
-    if (moonReady && moonImg.naturalWidth > 0) {
+  function drawMoon(ctx, x, y, r) {
+    if (moonImg.complete && moonImg.naturalWidth > 0) {
       ctx.save();
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2); ctx.clip();
       ctx.drawImage(moonImg, x - r, y - r, r*2, r*2);
       ctx.restore();
-      // limb shading
-      const limb = ctx.createRadialGradient(x, y, r*0.6, x, y, r);
-      limb.addColorStop(0, 'rgba(0,0,0,0)');
-      limb.addColorStop(1, 'rgba(0,0,0,0.35)');
-      ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
-      ctx.fillStyle = limb; ctx.fill();
     } else {
-      const g = ctx.createRadialGradient(x-r*0.25, y-r*0.25, 2, x, y, r);
-      g.addColorStop(0,'#d8d0c0'); g.addColorStop(1,'#888070');
+      const g = ctx.createRadialGradient(x - r*0.25, y - r*0.25, 2, x, y, r);
+      g.addColorStop(0, '#d8d0c0'); g.addColorStop(1, '#888070');
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI*2);
       ctx.fillStyle = g; ctx.fill();
     }
   }
 
-  let power      = 0;    // 0–1, oscillates
-  let powerDir   = 1;
-  let powerSpeed = 0.012;
-  let moons      = [];   // {x,y} landed moons
-  let flying     = null; // {x,y,vy} in-flight moon
-  let animId;
-
-  function goodPower(p) { return p > 0.35 && p < 0.65; }
-
-  function draw() {
-    ctx.clearRect(0, 0, 360, 320);
-    ctx.fillStyle = '#040810';
-    ctx.fillRect(0, 0, 360, 320);
-
-    // Stars
-    for (let i = 0; i < 50; i++) {
-      ctx.fillStyle = `rgba(255,255,255,${0.1+((i*73)%10)*0.05})`;
-      ctx.fillRect((i*137)%360,(i*97)%200,1,1);
+  function drawOption(btn, o) {
+    const ctx = btn.querySelector('canvas').getContext('2d');
+    const c = S / 2;
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, S, S);
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${0.1 + ((i*73)%10)*0.04})`;
+      ctx.fillRect((i*137) % S, (i*97) % S, 1, 1);
     }
-
-    // Field circle
-    ctx.beginPath();
-    ctx.arc(fieldCx, fieldCy, fieldR, 0, Math.PI*2);
-    ctx.strokeStyle = '#7ecfed';
-    ctx.lineWidth   = 2;
-    ctx.stroke();
-    ctx.fillStyle   = 'rgba(126,207,237,0.07)';
-    ctx.fill();
-
-    // Label
-    ctx.fillStyle = 'rgba(126,207,237,0.6)';
-    ctx.font      = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('HSC Field', fieldCx, fieldCy - fieldR - 6);
-
-    // Landed moons
-    moons.forEach(m => drawMoon(m.x, m.y, moonR));
-
-    // Flying moon
-    if (flying) drawMoon(flying.x, flying.y, moonR);
-
-    // Gun (triangle pointing up)
-    ctx.fillStyle = '#7ecfed';
-    ctx.beginPath();
-    ctx.moveTo(gunX, gunY - 20);
-    ctx.lineTo(gunX - 12, gunY + 8);
-    ctx.lineTo(gunX + 12, gunY + 8);
-    ctx.closePath(); ctx.fill();
-
-    // Power gauge (bar on right)
-    const gaugeX = 328, gaugeY = 220, gaugeH = 100;
-    ctx.fillStyle = '#1a2530';
-    ctx.fillRect(gaugeX - 10, gaugeY - gaugeH, 20, gaugeH);
-    // fill
-    const fillH   = gaugeH * power;
-    const isGreen = goodPower(power);
-    ctx.fillStyle = isGreen ? '#44ee44' : '#e07030';
-    ctx.fillRect(gaugeX - 10, gaugeY - fillH, 20, fillH);
-    // green target zone marker
-    ctx.strokeStyle = '#44ee44';
-    ctx.lineWidth   = 1.5;
-    ctx.strokeRect(gaugeX - 10, gaugeY - gaugeH*0.65, 20, gaugeH*0.30);
-
-    ctx.fillStyle   = 'rgba(255,255,255,0.5)';
-    ctx.font        = '10px sans-serif';
-    ctx.textAlign   = 'center';
-    ctx.fillText('PWR', gaugeX, gaugeY + 14);
-
-    // Counter
-    ctx.fillStyle = '#fff';
-    ctx.font      = 'bold 14px sans-serif';
-    ctx.textAlign = 'left';
-    ctx.fillText(`${moons.length} / ${goal}`, 12, 22);
+    // Field of view
+    ctx.beginPath(); ctx.arc(c, c, o.fieldR, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
+    // Moons: one in the centre, the rest in a ring around it
+    drawMoon(ctx, c, c, moonR);
+    const ring = o.moons - 1;
+    for (let k = 0; k < ring; k++) {
+      const a = (k / ring) * Math.PI * 2 - Math.PI/2;
+      drawMoon(ctx, c + Math.cos(a) * 39, c + Math.sin(a) * 39, moonR);
+    }
   }
 
-  // Find a non-overlapping spot in the field for a new moon
-  function _findSpot() {
-    for (let attempt = 0; attempt < 200; attempt++) {
-      const angle = Math.random() * Math.PI * 2;
-      const dist  = Math.random() * (fieldR - moonR - 4);
-      const nx    = fieldCx + Math.cos(angle) * dist;
-      const ny    = fieldCy + Math.sin(angle) * dist;
-      const ok    = moons.every(m => Math.hypot(m.x-nx, m.y-ny) > moonR * 2.1);
-      if (ok) return {x: nx, y: ny};
-    }
-    return null;
+  const buttons = Array.from(area.querySelectorAll('.mg-quiz-opt'));
+  buttons.forEach((b, i) => drawOption(b, options[i]));
+
+  function reveal(btn, o, colour) {
+    btn.style.borderColor = colour;
+    btn.querySelector('.mg-quiz-lbl').textContent = o.label;
+    btn.querySelector('.mg-quiz-det').textContent = o.detail;
   }
 
-  function shoot() {
-    if (flying || !goodPower(power)) {
-      _setStatus('Power off — wait for the green zone!', false);
-      return;
+  let done = false;
+  buttons.forEach((btn, i) => btn.addEventListener('click', () => {
+    if (done || btn.disabled) return;
+    const o = options[i];
+    if (o.id === 'hsc') {
+      done = true;
+      buttons.forEach((b, j) => {
+        b.style.cursor = 'default';
+        reveal(b, options[j], options[j].id === 'hsc' ? '#44ee44' : '#555');
+      });
+      _setStatus('✓ Correct! HSC replaced Suprime-Cam and sees ~7× more sky in a single shot.', true);
+      setTimeout(_miniGamePassed, 2200);
+    } else {
+      // Lock the wrong option and show what it really is — second chance
+      btn.disabled = true;
+      btn.style.opacity = '0.45';
+      btn.style.cursor = 'not-allowed';
+      reveal(btn, o, '#e05050');
+      _setStatus('Not quite — that\'s Suprime-Cam, HSC\'s older predecessor. It only fits about 1 Moon. Try the other one!', false);
     }
-    flying = { x: gunX, y: gunY - 20, vy: -4.5 };
-  }
-
-  function tick() {
-    // Oscillate power
-    power += powerDir * powerSpeed;
-    if (power >= 1) { power = 1; powerDir = -1; }
-    if (power <= 0) { power = 0; powerDir =  1; }
-
-    // Move flying moon
-    if (flying) {
-      flying.y += flying.vy;
-      flying.vy += 0.08; // slight gravity
-
-      // Check if landed in field
-      const dist = Math.hypot(flying.x - fieldCx, flying.y - fieldCy);
-      if (dist + moonR < fieldR && flying.vy > 0) {
-        // Find a spot to place it
-        const spot = _findSpot();
-        if (spot) {
-          moons.push(spot);
-        } else {
-          moons.push({x: flying.x, y: flying.y}); // fallback
-        }
-        flying = null;
-        _setStatus(`${moons.length} / ${goal} moons placed`, moons.length === goal);
-        if (moons.length >= goal) {
-          cancelAnimationFrame(animId);
-          setTimeout(_miniGamePassed, 800);
-          return;
-        }
-      } else if (flying.y > 320) {
-        // Missed
-        flying = null;
-        _setStatus('Missed! Adjust the power.', false);
-      }
-    }
-
-    draw();
-    animId = requestAnimationFrame(tick);
-  }
-
-  canvas.addEventListener('click', shoot);
-  animId = requestAnimationFrame(tick);
+  }));
 }
 
 // ──────────────────────────────────────────────────────────
-// AO (36 / 188 / 3K)
-// Wavy lines come in from left.
-// Player drags a vertical slider until wavefronts straighten.
-// AO36: needs ~60% correction. AO188: ~85%. AO3K: ~97%.
+// AO (36 / 188 / 3K) — deformable mirror
+// Wavy (atmosphere-distorted) light enters from the top-right,
+// bounces off a deformable mirror "(" on the left and goes to
+// the camera at the bottom-left. Drag the slider to bend the
+// mirror until the reflected light comes out straight.
+// AO36: needs 60% correction. AO188: 82%. AO3K: 95%.
 // ──────────────────────────────────────────────────────────
 function _game_ao(instrId, actuators, teachText) {
-  _setTeaches(teachText);
+  _setTeaches(teachText + ' Bend the deformable mirror so the reflected light comes out straight.');
 
   // How straight the waves need to be before passing (0–1)
   const target = instrId === 'ao36' ? 0.60 : instrId === 'ao188' ? 0.82 : 0.95;
 
+  const W = 400, H = 300;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="280" style="display:block;margin:auto;cursor:ns-resize"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag the slider up to straighten the wavefront</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;cursor:ns-resize"></canvas>
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag the slider up to bend the mirror and straighten the reflected light</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
@@ -483,125 +402,185 @@ function _game_ao(instrId, actuators, teachText) {
   let startY     = 0;
   let startCorr  = 0;
   let passed     = false;
-  let animId;
+  let phase      = 0;
 
-  // Slider position (right side)
-  const sliderX = 330, sliderMinY = 30, sliderMaxY = 240;
+  // ── Geometry ──
+  const sliderX = 375, sliderMinY = 40, sliderMaxY = 250;
+  const SRC = [345, 12];          // light enters from the top-right
+  const CAM = [28,  H - 22];      // camera at the bottom-left
+  const MIR = [92,  96];          // mirror centre
+  const unit = (x, y) => { const l = Math.hypot(x, y); return [x/l, y/l]; };
+  const dIn  = unit(MIR[0] - SRC[0], MIR[1] - SRC[1]);       // incoming direction
+  const dOut = unit(CAM[0] - MIR[0], CAM[1] - MIR[1]);       // reflected direction
+  const NRM  = unit(dOut[0] - dIn[0], dOut[1] - dIn[1]);     // mirror normal (faces the light)
+  const TAN  = [-NRM[1], NRM[0]];                             // along the mirror surface
+  const MIR_HALF = 70;                                        // half length of the mirror
+  // Beam width + wave height are kept small enough that the whole beam lands on the mirror
+  const BEAM_LINES = 7, BEAM_W = 34, WAVE_LEN = 34, AMP = 8;
+  const EXT = 70;   // beams are drawn this far past the mirror centre, then clipped at its surface
+  // Actuator pins drawn behind the mirror — more for newer AO systems
+  const pins = actuators >= 3000 ? 31 : actuators >= 188 ? 15 : 7;
 
-  function corrToSliderY(c) {
-    return sliderMaxY - c * (sliderMaxY - sliderMinY);
+  function corrToSliderY(c) { return sliderMaxY - c * (sliderMaxY - sliderMinY); }
+
+  // Draw a band of wavy lines from point a to point b
+  function drawBeam(a, b, amp) {
+    const dir = unit(b[0] - a[0], b[1] - a[1]);
+    const n   = [-dir[1], dir[0]];
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    for (let k = 0; k < BEAM_LINES; k++) {
+      const off = (k / (BEAM_LINES - 1) - 0.5) * BEAM_W;
+      ctx.beginPath();
+      for (let t = 0; t <= len; t += 3) {
+        const w = off + amp * Math.sin((t / WAVE_LEN) * Math.PI * 2 - phase + k * 0.9);
+        const x = a[0] + dir[0]*t + n[0]*w;
+        const y = a[1] + dir[1]*t + n[1]*w;
+        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = `hsla(${50 + k*4},90%,${70 + k*2}%,0.85)`;
+      ctx.lineWidth = 1.4;
+      ctx.stroke();
+    }
   }
 
   function draw() {
-    ctx.clearRect(0, 0, 360, 280);
+    ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = '#040810';
-    ctx.fillRect(0, 0, 360, 280);
+    ctx.fillRect(0, 0, W, H);
 
-    const numWaves = 10;
-    const waveH    = 240 / numWaves;
-    const amplitude = 18 * (1 - correction); // shrinks toward 0 as correction rises
+    // Deformable mirror "(" — nearly straight at 0 %, curved toward the light at 100 %
+    const bulge = 4 + 22 * correction;
+    const p0 = [MIR[0] - TAN[0]*MIR_HALF, MIR[1] - TAN[1]*MIR_HALF];
+    const p1 = [MIR[0] + TAN[0]*MIR_HALF, MIR[1] + TAN[1]*MIR_HALF];
+    const cp = [MIR[0] - NRM[0]*bulge*2, MIR[1] - NRM[1]*bulge*2];
 
-    // Draw wavefronts
-    for (let i = 0; i < numWaves; i++) {
-      const baseY  = 20 + i * waveH + waveH / 2;
-      const hue    = 180 + i * 8; // blue-ish range
+    // Light only exists in front of the mirror: clip to the region on the
+    // light's side of the mirror surface, so beams stop exactly at the mirror.
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]);
+    ctx.quadraticCurveTo(cp[0], cp[1], p1[0], p1[1]);
+    ctx.lineTo(p1[0] + TAN[0]*800,               p1[1] + TAN[1]*800);
+    ctx.lineTo(p1[0] + TAN[0]*800 + NRM[0]*1600, p1[1] + TAN[1]*800 + NRM[1]*1600);
+    ctx.lineTo(p0[0] - TAN[0]*800 + NRM[0]*1600, p0[1] - TAN[1]*800 + NRM[1]*1600);
+    ctx.lineTo(p0[0] - TAN[0]*800,               p0[1] - TAN[1]*800);
+    ctx.closePath();
+    ctx.clip();
+    // Incoming light: always distorted by the atmosphere
+    drawBeam(SRC, [MIR[0] + dIn[0]*EXT, MIR[1] + dIn[1]*EXT], AMP);
+    // Reflected light: distortion shrinks as the mirror is corrected
+    drawBeam([MIR[0] - dOut[0]*EXT, MIR[1] - dOut[1]*EXT], CAM, AMP * (1 - correction));
+    ctx.restore();
+    // actuator pins behind the mirror
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < pins; i++) {
+      const t = (i + 0.5) / pins;
+      const bx = (1-t)*(1-t)*p0[0] + 2*(1-t)*t*cp[0] + t*t*p1[0];
+      const by = (1-t)*(1-t)*p0[1] + 2*(1-t)*t*cp[1] + t*t*p1[1];
       ctx.beginPath();
-      for (let x = 0; x <= 290; x += 2) {
-        // Wavy for uncorrected part, progressively straightening
-        const phase   = (x / 290) * Math.PI * 2;
-        const waviness= amplitude * Math.sin(phase + i * 0.9);
-        const y       = baseY + waviness;
-        x === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      }
-      ctx.strokeStyle = `hsl(${hue},70%,65%)`;
-      ctx.lineWidth   = 1.5;
+      ctx.moveTo(bx - NRM[0]*3,  by - NRM[1]*3);
+      ctx.lineTo(bx - NRM[0]*14, by - NRM[1]*14);
       ctx.stroke();
     }
+    ctx.beginPath();
+    ctx.moveTo(p0[0], p0[1]);
+    ctx.quadraticCurveTo(cp[0], cp[1], p1[0], p1[1]);
+    ctx.strokeStyle = '#dfe8f2';
+    ctx.lineWidth = 5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+
+    // Camera at the bottom-left
+    ctx.fillStyle = '#1a2530';
+    ctx.fillRect(CAM[0] - 18, CAM[1] - 6, 36, 20);
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(CAM[0] - 18, CAM[1] - 6, 36, 20);
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('camera', CAM[0], CAM[1] + 8);
+
+    // Labels
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.textAlign = 'right';
+    ctx.fillText('starlight (blurred by the air)', W - 40, 82);
+    ctx.textAlign = 'left';
+    ctx.fillText(`deformable mirror · ${actuators} actuators`, 14, 14);
 
     // Quality bar (bottom)
-    const barW = 290 * correction;
-    ctx.fillStyle = `hsl(${120 * correction},70%,45%)`;
-    ctx.fillRect(0, 262, barW, 10);
+    const barX = 110, barW = 230, barY = H - 18;
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.fillRect(barW, 262, 290 - barW, 10);
-    // Target line
+    ctx.fillRect(barX, barY, barW, 10);
+    ctx.fillStyle = `hsl(${120 * correction},70%,45%)`;
+    ctx.fillRect(barX, barY, barW * correction, 10);
     ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 1;
     ctx.beginPath();
-    ctx.moveTo(290 * target, 258);
-    ctx.lineTo(290 * target, 275);
+    ctx.moveTo(barX + barW * target, barY - 4);
+    ctx.lineTo(barX + barW * target, barY + 13);
     ctx.stroke();
-
-    // Label
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
     ctx.font      = '10px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(`${Math.round(correction*100)}%`, 145, 258);
+    ctx.fillText(`straightness ${Math.round(correction*100)}%`, barX + barW/2, barY - 5);
 
-    // Slider track
+    // Slider track + knob
     ctx.fillStyle = '#1a2530';
     ctx.fillRect(sliderX - 5, sliderMinY, 10, sliderMaxY - sliderMinY);
-
-    // Slider knob
-    const knobY = corrToSliderY(correction);
-    ctx.fillStyle = '#7ecfed';
+    ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(sliderX, knobY, 10, 0, Math.PI*2);
+    ctx.arc(sliderX, corrToSliderY(correction), 10, 0, Math.PI*2);
     ctx.fill();
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth   = 1.5;
-    ctx.stroke();
-
-    // Actuator count label
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font      = '10px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${actuators}`, sliderX, sliderMaxY + 18);
-    ctx.fillText('act.', sliderX, sliderMaxY + 30);
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = '9px sans-serif';
+    ctx.fillText('bend', sliderX, sliderMinY - 14);
   }
 
   function pointerY(e) {
     const r = canvas.getBoundingClientRect();
-    return (e.touches ? e.touches[0].clientY : e.clientY) - r.top;
+    const scale = H / r.height;    // the canvas may be shrunk on small screens
+    return ((e.touches ? e.touches[0].clientY : e.clientY) - r.top) * scale;
+  }
+  function onMove(e) {
+    if (!dragging) return;
+    if (e.touches && e.cancelable) e.preventDefault();
+    const dy = startY - pointerY(e);        // drag up = more correction
+    correction = Math.min(1, Math.max(0, startCorr + dy / (sliderMaxY - sliderMinY)));
+  }
+  function onUp() { dragging = false; }
+  function cleanup() {
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('touchmove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    window.removeEventListener('touchend', onUp);
   }
 
-  canvas.addEventListener('mousedown',  e => { dragging=true; startY=pointerY(e); startCorr=correction; });
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); dragging=true; startY=pointerY(e); startCorr=correction; }, {passive:false});
-
-  window.addEventListener('mousemove',  e => {
-    if (!dragging) return;
-    const dy   = startY - pointerY(e); // drag up = more correction
-    const span = sliderMaxY - sliderMinY;
-    correction = Math.min(1, Math.max(0, startCorr + dy / span));
-  });
-  window.addEventListener('touchmove',  e => {
-    if (!dragging) return;
-    e.preventDefault();
-    const dy   = startY - pointerY(e);
-    const span = sliderMaxY - sliderMinY;
-    correction = Math.min(1, Math.max(0, startCorr + dy / span));
-  }, {passive:false});
-
-  window.addEventListener('mouseup',  () => { dragging = false; });
-  window.addEventListener('touchend', () => { dragging = false; });
+  canvas.addEventListener('mousedown',  e => { dragging = true; startY = pointerY(e); startCorr = correction; });
+  canvas.addEventListener('touchstart', e => { e.preventDefault(); dragging = true; startY = pointerY(e); startCorr = correction; }, { passive:false });
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('touchmove', onMove, { passive:false });
+  window.addEventListener('mouseup',  onUp);
+  window.addEventListener('touchend', onUp);
 
   function tick() {
+    if (!canvas.isConnected) { cleanup(); return; }   // overlay was closed
+    phase += 0.08;
     if (!passed && correction >= target) {
       passed = true;
+      dragging = false;
       _setStatus(`✓ Wavefront corrected to ${Math.round(correction*100)}%!`, true);
-      cancelAnimationFrame(animId);
-      draw();
-      setTimeout(_miniGamePassed, 900);
-      return;
+      setTimeout(_miniGamePassed, 1100);
     }
     if (!passed) {
-      _setStatus(`Correction: ${Math.round(correction*100)}% — need ${Math.round(target*100)}%`, false);
+      _setStatus(`Straightness: ${Math.round(correction*100)}% — need ${Math.round(target*100)}%`, false);
     }
     draw();
-    animId = requestAnimationFrame(tick);
+    requestAnimationFrame(tick);
   }
 
-  animId = requestAnimationFrame(tick);
+  requestAnimationFrame(tick);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -953,116 +932,210 @@ function _game_ird() {
 }
 
 // ──────────────────────────────────────────────────────────
-// FMOS — Untangle 3 optical fibers by swapping ends
+// FMOS — Fan white light out into its colours
+// White light enters at the left. It looks like one white sheet,
+// but it is really a stack of coloured sheets pinned at the left
+// (like a fan of coloured paper). Grab the dot at the end of the
+// stack and swing the top sheet to the matching colour dot — it
+// fans out and shows its true colour. Separate them all to win.
+//
+// ✎ Tweak the look & difficulty in FMOS_CONFIG below — every
+//   size, colour and option the game uses lives there.
+//   Preview quickly with  index.html?mg=fmos
 // ──────────────────────────────────────────────────────────
-function _game_fmos() {
-  _setTeaches('FMOS routes starlight through optical fibres to separate spectra. Untangle the fibres by swapping their ends!');
+const FMOS_CONFIG = {
+  canvasW: 400,
+  canvasH: 290,
 
+  // Fan geometry
+  pivotX:      34,    // where the light comes in — every sheet is pinned here
+  pivotY:     145,
+  sheetLength: 300,   // pivot → far end of each sheet
+  sheetWidth:   44,   // thickness of each sheet
+  fanSpread:    44,   // total fan angle in degrees, top sheet ↔ bottom sheet
+  dotGap:       26,   // distance from the end of a sheet to its colour dot
+
+  // Sheets, top of the fan → bottom. Add/remove entries to change the count.
+  layers: [
+    { name: 'red',    color: '#ff4a4a' },
+    { name: 'orange', color: '#ffa030' },
+    { name: 'yellow', color: '#f2e040' },
+    { name: 'green',  color: '#40d070' },
+    { name: 'blue',   color: '#4a80ff' },
+    { name: 'violet', color: '#a060f0' },
+  ],
+
+  whiteColor:  '#f6f6f2',   // how the un-separated (mixed) light looks
+  sheetAlpha:  0.95,        // opacity of a coloured sheet
+  sheetEdge:   'rgba(0,0,0,0.18)', // thin outline so overlapping sheets stay readable
+
+  handleR:     9,           // radius of the draggable dot at the end of the stack
+  dotR:        10,          // radius of the colour dots
+  snapDist:    24,          // how close (px) a drop must be to a colour dot
+  peelOrder:   'random',    // 'random' = top sheet's colour is a surprise; 'inOrder' = top → bottom
+  shuffleDots: false,       // true = colour dots in random order around the fan
+  revealDist:  50,          // drag distance (px) over which a sheet turns from white to its colour
+};
+
+function _game_fmos() {
+  const C = FMOS_CONFIG;
+  _setTeaches('FMOS sends starlight down optical fibres into a spectrograph, which fans the light out into its colours (a spectrum). White light is really all the colours stacked together — pull them apart!');
+
+  const W = C.canvasW, H = C.canvasH;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:pointer"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Click two bottom connectors to swap — match the colors</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;touch-action:none"></canvas>
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Hold the dot at the end of the white light and swing it to the matching colour dot</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
+  const d2r    = Math.PI / 180;
+  const n      = C.layers.length;
 
-  const colors   = ['#e05050','#50c850','#5090f0'];
-  const topX     = [80, 180, 280];
-  const topY     = 40;
-  const botX     = [80, 180, 280]; // shuffle target
-  const botY     = 220;
-  const connR    = 14;
+  // Fan angle (radians) for each dot slot, top → bottom
+  const slotAngle = s => (-C.fanSpread / 2 + (n > 1 ? s * C.fanSpread / (n - 1) : 0)) * d2r;
+  const dotPos = s => {
+    const a = slotAngle(s), r = C.sheetLength + C.dotGap;
+    return [C.pivotX + Math.cos(a) * r, C.pivotY + Math.sin(a) * r];
+  };
+  const handlePos = () => [C.pivotX + C.sheetLength, C.pivotY];
 
-  // bottom[i] = which color is at that bottom slot
-  let bottom = [1, 2, 0]; // shuffled
-  let selected = null;    // index of selected bottom connector
+  // dotOrder[slot] = layer index shown at that slot
+  const shuffle = arr => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; };
+  const dotOrder = C.layers.map((_, i) => i);
+  if (C.shuffleDots) shuffle(dotOrder);
 
-  function isSolved() {
-    return bottom[0]===0 && bottom[1]===1 && bottom[2]===2;
+  // Stack of sheets still mixed into white light; the LAST entry is on top
+  const stack = C.layers.map((_, i) => i).reverse();
+  if (C.peelOrder === 'random') shuffle(stack);
+
+  const placed = [];          // { layer, angle }
+  let drag = null;            // { layer, angle, reveal, startX, startY }
+  let passed = false;
+
+  function sheet(angle, fill, alpha) {
+    ctx.save();
+    ctx.translate(C.pivotX, C.pivotY);
+    ctx.rotate(angle);
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = fill;
+    ctx.fillRect(0, -C.sheetWidth / 2, C.sheetLength, C.sheetWidth);
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = C.sheetEdge;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(0, -C.sheetWidth / 2, C.sheetLength, C.sheetWidth);
+    ctx.restore();
   }
 
   function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,260);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#040810';
+    ctx.fillRect(0, 0, W, H);
 
-    // Draw fibres from each top to the bottom slot that holds its color's end
-    // But the fibre from top i goes to the bottom slot that currently has color i
-    colors.forEach((col, i) => {
-      const bSlot = bottom.indexOf(i); // which bottom slot holds color i
-      const tx = topX[i], ty = topY;
-      const bx = botX[bSlot], by = botY;
+    // Light source glow where the light enters
+    const g = ctx.createRadialGradient(C.pivotX, C.pivotY, 0, C.pivotX, C.pivotY, 40);
+    g.addColorStop(0, 'rgba(255,255,255,0.7)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(C.pivotX, C.pivotY, 40, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    ctx.font = '10px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText('white light in', 4, C.pivotY + C.sheetWidth / 2 + 30);
 
-      // Bezier curve
-      ctx.beginPath();
-      ctx.moveTo(tx, ty + connR);
-      ctx.bezierCurveTo(tx, ty + 100, bx, by - 100, bx, by - connR);
-      ctx.strokeStyle = col;
-      ctx.lineWidth   = 3;
-      ctx.stroke();
+    // Separated sheets, top of the fan first so lower ones overlap like fanned paper
+    placed.slice().sort((a, b) => a.angle - b.angle)
+      .forEach(p => sheet(p.angle, C.layers[p.layer].color, C.sheetAlpha));
+
+    // Remaining white stack (a few offset edges make it read as a pile)
+    stack.forEach((_, k) => {
+      const off = (stack.length - 1 - k) * 1.2;
+      ctx.save(); ctx.translate(0, off); sheet(0, C.whiteColor, 1); ctx.restore();
     });
 
-    // Top connectors (fixed)
-    colors.forEach((col, i) => {
-      ctx.beginPath(); ctx.arc(topX[i], topY, connR, 0, Math.PI*2);
-      ctx.fillStyle = col; ctx.fill();
-      ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
-      ctx.fillStyle='#fff'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('IN', topX[i], topY + 4);
+    // Sheet being pulled out: white → its colour as it separates
+    if (drag) {
+      sheet(drag.angle, C.whiteColor, 1);
+      sheet(drag.angle, C.layers[drag.layer].color, C.sheetAlpha * drag.reveal);
+    }
+
+    // Colour dots around the end of the fan
+    dotOrder.forEach((li, slot) => {
+      const [x, y] = dotPos(slot);
+      const done = placed.some(p => p.layer === li);
+      ctx.beginPath(); ctx.arc(x, y, C.dotR, 0, Math.PI * 2);
+      ctx.fillStyle = C.layers[li].color; ctx.fill();
+      ctx.strokeStyle = done ? '#ffffff' : 'rgba(255,255,255,0.35)';
+      ctx.lineWidth = done ? 2.5 : 1; ctx.stroke();
     });
 
-    // Bottom connectors (swappable)
-    bottom.forEach((colorIdx, i) => {
-      const col = colors[colorIdx];
-      const isSel = selected === i;
-      ctx.beginPath(); ctx.arc(botX[i], botY, connR, 0, Math.PI*2);
-      ctx.fillStyle = col; ctx.fill();
-      ctx.strokeStyle = isSel ? '#fff' : '#444';
-      ctx.lineWidth   = isSel ? 3 : 1.5;
-      ctx.stroke();
-      ctx.fillStyle='#fff'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('OUT', botX[i], botY + 4);
-    });
-
-    // Check labels
-    if (isSolved()) {
-      ctx.fillStyle='#44ee44'; ctx.font='bold 16px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('✓ Fibres aligned!', 180, 145);
+    // Handle at the end of the stack (or following the dragged sheet)
+    if (stack.length && !passed) {
+      const a = drag ? drag.angle : 0;
+      const hx = C.pivotX + Math.cos(a) * C.sheetLength, hy = C.pivotY + Math.sin(a) * C.sheetLength;
+      ctx.beginPath(); ctx.arc(hx, hy, C.handleR, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.strokeStyle = 'rgba(20,30,45,0.8)'; ctx.lineWidth = 2.5; ctx.stroke();
     }
   }
 
-  canvas.addEventListener('click', e => {
-    const r  = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
+  function pos(e) {
+    const r = canvas.getBoundingClientRect();
+    return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height];
+  }
 
-    // Check bottom connectors
-    for (let i = 0; i < 3; i++) {
-      if (Math.hypot(mx - botX[i], my - botY) < connR + 6) {
-        if (selected === null) {
-          selected = i;
-        } else if (selected !== i) {
-          // Swap
-          const tmp      = bottom[selected];
-          bottom[selected] = bottom[i];
-          bottom[i]       = tmp;
-          selected        = null;
-          draw();
-          if (isSolved()) {
-            _setStatus('✓ Optical fibres untangled!', true);
-            setTimeout(_miniGamePassed, 900);
-          } else {
-            _setStatus('Keep swapping to match the colors.', false);
-          }
-          return;
-        } else {
-          selected = null;
-        }
-        draw();
-        return;
-      }
+  canvas.addEventListener('pointermove', e => {
+    const [x, y] = pos(e);
+    if (!drag) {
+      const [hx, hy] = handlePos();
+      canvas.style.cursor = stack.length && Math.hypot(x - hx, y - hy) < C.handleR + 10 ? 'grab' : 'default';
+      return;
     }
+    const lim = (C.fanSpread / 2 + 12) * d2r;
+    drag.angle  = Math.max(-lim, Math.min(lim, Math.atan2(y - C.pivotY, x - C.pivotX)));
+    drag.reveal = Math.min(1, Math.hypot(x - drag.startX, y - drag.startY) / C.revealDist);
+    draw();
   });
 
+  canvas.addEventListener('pointerdown', e => {
+    if (passed || !stack.length) return;
+    const [x, y] = pos(e);
+    const [hx, hy] = handlePos();
+    if (Math.hypot(x - hx, y - hy) > C.handleR + 10) return;
+    drag = { layer: stack.pop(), angle: 0, reveal: 0, startX: x, startY: y };
+    canvas.setPointerCapture(e.pointerId);
+    canvas.style.cursor = 'grabbing';
+    draw();
+  });
+
+  function release(e) {
+    if (!drag) return;
+    const [x, y] = pos(e);
+    const d = drag;
+    drag = null;
+    canvas.style.cursor = 'default';
+    const slot = dotOrder.findIndex((_, s) => { const [dx, dy] = dotPos(s); return Math.hypot(x - dx, y - dy) < C.snapDist; });
+    if (slot >= 0 && dotOrder[slot] === d.layer) {
+      placed.push({ layer: d.layer, angle: slotAngle(slot) });
+      if (!stack.length) {
+        passed = true;
+        _setStatus('✓ White light fanned out into all its colours — that\'s a spectrum!', true);
+        setTimeout(_miniGamePassed, 1300);
+      } else {
+        _setStatus(`✓ ${C.layers[d.layer].name} separated — ${stack.length} to go`, true);
+      }
+    } else {
+      stack.push(d.layer);   // back on top of the pile
+      _setStatus(slot >= 0
+        ? `That sheet is ${C.layers[d.layer].name} — swing it to the ${C.layers[d.layer].name} dot.`
+        : `Swing the sheet all the way to its colour dot.`, false);
+    }
+    draw();
+  }
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+
+  _setStatus(`Separate all ${n} colours from the white light`, false);
   draw();
 }
 
@@ -1411,96 +1484,162 @@ function _game_comics() {
 }
 
 // ──────────────────────────────────────────────────────────
-// CIAO — Move mask over star to reveal planet
+// CIAO — Coronagraph mask + Lyot stop
+// 1. Drag the solid mask onto the star to block its bright core.
+// 2. Light still leaks around the mask's edge as a blurry glow —
+//    drag the hollow Lyot stop over that glow to block it too.
+// With both in place, the faint planet next to the star appears.
 // ──────────────────────────────────────────────────────────
 function _game_ciao() {
-  _setTeaches('CIAO uses a coronagraph to block starlight. Move the mask over the star to reveal the hidden planet!');
+  _setTeaches('CIAO is a coronagraph: a mask blocks the star\'s bright centre, and a ring-shaped Lyot stop blocks the light that still leaks around the mask\'s edge. Only then does the faint planet show up!');
 
+  const W = 360, H = 260;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:move"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag the circular mask onto the star</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;cursor:move;touch-action:none"></canvas>
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag the mask onto the star, then drag the hollow Lyot stop over the blurry glow</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
 
-  const starX = 180, starY = 120, starR = 24;
-  const planetX = starX + 70, planetY = starY - 30, planetR = 7;
-  let maskX = 60, maskY = 200, maskR = 30;
-  let dragging = false, dragDX = 0, dragDY = 0;
-  let passed   = false;
-  let animId;
+  const starX = 180, starY = 118, starR = 15;
+  const haloR = 62;                                 // reach of the blurry scattered light
+  // Fuzzy blobs (speckles) inside the scattered glow — fixed positions
+  const speckles = Array.from({ length: 11 }, (_, i) => {
+    const a = i * 2.39, r = 26 + (i * 37) % 26;
+    return { x: starX + Math.cos(a) * r, y: starY + Math.sin(a) * r, r: 6 + (i * 5) % 6 };
+  });
+  const planetX = starX + 68, planetY = starY - 40, planetR = 6;
+  const SNAP = 9;                                   // how close counts as "on the star"
+
+  const mask = { x: 55,  y: 212, r: 22 };           // solid occulting mask
+  const lyot = { x: 298, y: 196, rIn: 27, rOut: 54 }; // hollow Lyot stop
+  let drag = null, dx = 0, dy = 0;
+  let passed = false;
+
+  const onStar = o => Math.hypot(o.x - starX, o.y - starY) < SNAP;
+
+  function glow(r0, r1, alpha) {
+    const g = ctx.createRadialGradient(starX, starY, r0, starX, starY, r1);
+    g.addColorStop(0, `rgba(255,236,170,${alpha})`);
+    g.addColorStop(1, 'rgba(255,236,170,0)');
+    ctx.beginPath(); ctx.arc(starX, starY, r1, 0, Math.PI*2);
+    ctx.fillStyle = g; ctx.fill();
+  }
 
   function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,260);
-    for (let i=0;i<50;i++) {
-      ctx.fillStyle=`rgba(255,255,255,${0.1+((i*73)%10)*0.05})`;
-      ctx.fillRect((i*137)%360,(i*97)%260,1,1);
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
+    for (let i = 0; i < 50; i++) {
+      ctx.fillStyle = `rgba(255,255,255,${0.1 + ((i*73)%10)*0.05})`;
+      ctx.fillRect((i*137) % W, (i*97) % H, 1, 1);
     }
 
-    // Check mask alignment
-    const dist   = Math.hypot(maskX - starX, maskY - starY);
-    const masked = dist < 10;
+    const masked = onStar(mask), stopped = onStar(lyot);
 
+    // Wide glare: drowns out the planet unless BOTH core and glow are blocked
+    if (!(masked && stopped)) glow(0, 110, masked || stopped ? 0.35 : 0.6);
+
+    // Star core
     if (!masked) {
-      // Star blaze
-      const sg = ctx.createRadialGradient(starX,starY,2,starX,starY,starR+40);
-      sg.addColorStop(0,'rgba(255,255,180,0.9)');
-      sg.addColorStop(0.3,'rgba(255,220,100,0.5)');
-      sg.addColorStop(1,'rgba(255,220,100,0)');
-      ctx.beginPath(); ctx.arc(starX,starY,starR+40,0,Math.PI*2);
-      ctx.fillStyle=sg; ctx.fill();
-      ctx.beginPath(); ctx.arc(starX,starY,starR,0,Math.PI*2);
-      ctx.fillStyle='#fffde0'; ctx.fill();
-      // Planet invisible in glare
-    } else {
-      // Star hidden under mask — only outer halo visible
-      ctx.beginPath(); ctx.arc(starX,starY,starR,0,Math.PI*2);
-      ctx.fillStyle='rgba(255,250,200,0.1)'; ctx.fill();
-      // Planet visible!
-      const pg = ctx.createRadialGradient(planetX,planetY,1,planetX,planetY,planetR);
-      pg.addColorStop(0,'#80c0ff'); pg.addColorStop(1,'#2050a0');
-      ctx.beginPath(); ctx.arc(planetX,planetY,planetR,0,Math.PI*2);
-      ctx.fillStyle=pg; ctx.fill();
-      ctx.fillStyle='#44ee44'; ctx.font='10px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('Planet!', planetX, planetY - planetR - 4);
+      glow(0, starR + 18, 0.9);
+      ctx.beginPath(); ctx.arc(starX, starY, starR, 0, Math.PI*2);
+      ctx.fillStyle = '#fffde0'; ctx.fill();
     }
 
-    // Mask circle (draggable)
-    ctx.beginPath(); ctx.arc(maskX,maskY,maskR,0,Math.PI*2);
-    ctx.fillStyle='rgba(26,37,48,0.92)'; ctx.fill();
-    ctx.strokeStyle='#7ecfed'; ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('mask', maskX, maskY+4);
+    // Scattered light: a soft, blurry glow around the star (blocked by the Lyot stop)
+    if (!stopped) {
+      ctx.save();
+      ctx.filter = 'blur(6px)';
+      const g = ctx.createRadialGradient(starX, starY, 0, starX, starY, haloR);
+      g.addColorStop(0,    'rgba(255,242,200,0.85)');
+      g.addColorStop(0.55, 'rgba(255,236,170,0.5)');
+      g.addColorStop(1,    'rgba(255,236,170,0)');
+      ctx.beginPath(); ctx.arc(starX, starY, haloR, 0, Math.PI*2);
+      ctx.fillStyle = g; ctx.fill();
+      speckles.forEach(s => {
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,240,190,0.45)'; ctx.fill();
+      });
+      ctx.restore();
+    }
 
-    animId = requestAnimationFrame(draw);
+    // Planet — only visible once all the starlight is blocked
+    if (masked && stopped) {
+      const pg = ctx.createRadialGradient(planetX, planetY, 1, planetX, planetY, planetR);
+      pg.addColorStop(0, '#9fd0ff'); pg.addColorStop(1, '#2a60b0');
+      ctx.beginPath(); ctx.arc(planetX, planetY, planetR, 0, Math.PI*2);
+      ctx.fillStyle = pg; ctx.fill();
+      ctx.fillStyle = '#44ee44'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Planet!', planetX, planetY - planetR - 5);
+    }
+
+    // Mask (solid)
+    ctx.beginPath(); ctx.arc(mask.x, mask.y, mask.r, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(26,37,48,0.96)'; ctx.fill();
+    ctx.strokeStyle = masked ? '#44ee44' : '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('mask', mask.x, mask.y + 3);
+
+    // Lyot stop (hollow ring)
+    ctx.beginPath();
+    ctx.arc(lyot.x, lyot.y, lyot.rOut, 0, Math.PI*2);
+    ctx.arc(lyot.x, lyot.y, lyot.rIn, 0, Math.PI*2, true);
+    ctx.fillStyle = 'rgba(26,37,48,0.96)'; ctx.fill('evenodd');
+    ctx.strokeStyle = stopped ? '#44ee44' : '#ffffff'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(lyot.x, lyot.y, lyot.rOut, 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(lyot.x, lyot.y, lyot.rIn,  0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText('Lyot stop', lyot.x, lyot.y + lyot.rOut - 10);
   }
 
-  function pointerPos(e) {
+  function status() {
+    const masked = onStar(mask), stopped = onStar(lyot);
+    if (masked && stopped) return;
+    if (masked)  _setStatus('Star core blocked — but light still leaks around the edge. Cover the blurry glow with the Lyot stop!', false);
+    else if (stopped) _setStatus('Glow blocked — now cover the star\'s bright centre with the mask.', false);
+    else _setStatus('Step 1: drag the mask onto the star.', false);
+  }
+
+  function pos(e) {
     const r = canvas.getBoundingClientRect();
-    return {
-      x: (e.touches ? e.touches[0].clientX : e.clientX) - r.left,
-      y: (e.touches ? e.touches[0].clientY : e.clientY) - r.top,
-    };
+    return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height];
   }
 
-  canvas.addEventListener('mousedown',  e => { const p=pointerPos(e); if(Math.hypot(p.x-maskX,p.y-maskY)<maskR+8){dragging=true;dragDX=p.x-maskX;dragDY=p.y-maskY;} });
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); const p=pointerPos(e); if(Math.hypot(p.x-maskX,p.y-maskY)<maskR+8){dragging=true;dragDX=p.x-maskX;dragDY=p.y-maskY;} },{passive:false});
-  window.addEventListener('mousemove',  e => { if(!dragging)return; const p=pointerPos(e); maskX=p.x-dragDX; maskY=p.y-dragDY; });
-  window.addEventListener('touchmove',  e => { if(!dragging)return; e.preventDefault(); const p=pointerPos(e); maskX=p.x-dragDX; maskY=p.y-dragDY; },{passive:false});
-  window.addEventListener('mouseup',  () => {
-    if (!dragging) return; dragging=false;
-    const dist = Math.hypot(maskX-starX,maskY-starY);
-    if (dist < 10 && !passed) { passed=true; _setStatus('✓ Star masked — planet revealed!',true); cancelAnimationFrame(animId); draw(); setTimeout(_miniGamePassed,900); }
+  canvas.addEventListener('pointerdown', e => {
+    if (passed) return;
+    const [x, y] = pos(e);
+    if (Math.hypot(x - mask.x, y - mask.y) < mask.r + 6) drag = mask;          // mask sits on top
+    else if (Math.hypot(x - lyot.x, y - lyot.y) < lyot.rOut + 6) drag = lyot;
+    else return;
+    dx = x - drag.x; dy = y - drag.y;
+    canvas.setPointerCapture(e.pointerId);
   });
-  window.addEventListener('touchend', () => {
-    if (!dragging) return; dragging=false;
-    const dist = Math.hypot(maskX-starX,maskY-starY);
-    if (dist < 10 && !passed) { passed=true; _setStatus('✓ Star masked — planet revealed!',true); cancelAnimationFrame(animId); draw(); setTimeout(_miniGamePassed,900); }
+  canvas.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const [x, y] = pos(e);
+    drag.x = x - dx; drag.y = y - dy;
+    draw();
   });
+  function release() {
+    if (!drag) return;
+    // Snap neatly onto the star when close enough
+    if (onStar(drag)) { drag.x = starX; drag.y = starY; }
+    drag = null;
+    draw();
+    if (!passed && onStar(mask) && onStar(lyot)) {
+      passed = true;
+      _setStatus('✓ Starlight blocked — planet revealed!', true);
+      setTimeout(_miniGamePassed, 1100);
+    } else {
+      status();
+    }
+  }
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
 
-  animId = requestAnimationFrame(draw);
+  status();
+  draw();
 }
 
 // ──────────────────────────────────────────────────────────
@@ -1869,3 +2008,17 @@ function _game_vampires() {
 
   animId = requestAnimationFrame(draw);
 }
+// ──────────────────────────────────────────────────────────
+// PREVIEW: open mini-games directly, without finding a target.
+//   index.html?mg=fmos          → just the FMOS game
+//   index.html?mg=hsc,ciao,ao3k → several in a row
+//   index.html?mg=all           → every instrument's game
+// Handy for trying out instruments that no target uses yet.
+// ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  let ids = (new URLSearchParams(location.search).get('mg') || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  if (!ids.length) return;
+  if (ids[0] === 'all') ids = Object.keys(UH_INSTRUMENTS);
+  setTimeout(() => startMiniGameQueue(ids, () => console.log('[UH] mini-game preview finished')), 0);
+});

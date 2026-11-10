@@ -337,7 +337,7 @@ const TARGETS = [
     id:'coma-cluster', category:'cluster',
     name:'Coma Cluster',
     instruments:['hsc'],
-    secondaryMirror:'large',
+    secondaryMirror:'prime',
     hints:{ hsc:'Only Hyper Suprime-Cam\'s enormous field can capture this vast galaxy cluster.' },
     img:'assets/star-pic/cluster/coma-cluster.jpg',
     url:'https://subarutelescope.org/en/results/2015/06/22/2274.html',
@@ -369,7 +369,7 @@ const TARGETS = [
     id:'sh2-209', category:'nebula',
     name:'Sh 2-209',
     instruments:['moircs'],
-    secondaryMirror:'prime',
+    secondaryMirror:'large',
     hints:{ moircs:'MOIRCS\'s wide near-infrared field reveals the young stellar population inside this HII region.' },
     img:'assets/star-pic/nebula/sh2-209.jpg',
     url:'https://subarutelescope.org/en/results/2023/07/05/3285.html',
@@ -630,13 +630,15 @@ const UH_INSTRUMENTS = {
     port:'nasmyth-r', secondaryMirror:'small',
     blurReduction:0.15,
   },
-  'pfs': {
-    name:'PFS', year:2024, color:'#c050c0',
-    shortRole:'Prime Focus Spectrograph',
-    description:'Prime Focus Spectrograph deploys 2,400 fibres across a 1.25-degree field to simultaneously take spectra of thousands of objects, enabling cosmological surveys and galactic archaeology.',
-    port:'primary', secondaryMirror:'prime',
-    blurReduction:0.15,
-  },
+  // PFS hidden for now — no target uses it yet. Uncomment to bring it back
+  // (also re-add 'pfs' to PRIMARY_FOCUS_INSTRUMENTS below and INSTRUMENT_GROUPS.prime in state.js).
+  //   'pfs': {
+  //     name:'PFS', year:2024, color:'#c050c0',
+  //     shortRole:'Prime Focus Spectrograph',
+  //     description:'Prime Focus Spectrograph deploys 2,400 fibres across a 1.25-degree field to simultaneously take spectra of thousands of objects, enabling cosmological surveys and galactic archaeology.',
+  //     port:'primary', secondaryMirror:'prime',
+  //     blurReduction:0.15,
+  //   },
   'vampires': {
     name:'VAMPIRES', year:2013, color:'#ff4080',
     shortRole:'Visible-light polarimetric imager',
@@ -647,7 +649,7 @@ const UH_INSTRUMENTS = {
 };
 
 // Instruments that occupy the PRIMARY (secondary) focus — mutually exclusive with Cassegrain/Nasmyth
-const PRIMARY_FOCUS_INSTRUMENTS = ['suprime-cam','hsc','fmos','pfs'];
+const PRIMARY_FOCUS_INSTRUMENTS = ['suprime-cam','hsc','fmos' /*, 'pfs' */];
 
 // Instruments requiring a SMALL secondary mirror for IR path
 const SMALL_SECONDARY_INSTRUMENTS = ['ao188','ao3k','ciao','hiciao','scexao','ircs','ird','ao36','charis','vampires'];

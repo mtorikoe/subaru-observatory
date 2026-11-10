@@ -133,6 +133,7 @@ function _overlayBgClick(e) {
 
 function closeReward() {
   _removeOverlay('#reward-overlay');
+  resetStarView();   // clear the result photo so any target can be observed again
   // Return to target selection state
   G.selectedTarget      = null;
   G.observationComplete = false;
@@ -147,6 +148,7 @@ function closeReward() {
 
 function closeRewardAndNext() {
   _removeOverlay('#reward-overlay');
+  resetStarView();   // clear the result photo so any target can be observed again
   // Keep instruments but clear target
   G.selectedTarget      = null;
   G.observationComplete = false;
