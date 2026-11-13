@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Instrument Mini Games — Subaru Observatory</title>
+<!-- Re-use the mini-game overlay styles (.mg-*) from Universe Hunting -->
+<link rel="stylesheet" href="../telescope-pro/css/uh.css">
+<style>
+/* uh.css is written for a fixed one-screen layout; undo that for this page */
+html, body { height: auto; overflow: auto; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  background: #040810 url('../../assets/bg.jpg') center / cover fixed;
+  color: #e8f2ff;
+}
+.ig-nav {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 28px;
+  background: rgba(255,255,255,.90);
+  border-bottom: 1px solid #1e3a5c;
+  color: #111827;
+}
+.ig-nav a { color: #1a5fa8; text-decoration: none; font-weight: 700; font-size: .9em; }
+.ig-nav a:hover { text-decoration: underline; }
+.ig-nav span { font-size: .9em; }
+
+.ig-main {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 32px 20px;
+}
+.ig-card {
+  width: min(760px, 100%);
+  display: flex; gap: 28px; align-items: center;
+  padding: 28px;
+  border-radius: 8px;
+  background: rgba(255,255,255,.18);
+  border: 0.5px solid rgba(255,255,255,.35);
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+}
+.ig-pic {
+  flex: 0 0 200px; height: 240px; border-radius: 8px; overflow: hidden;
+  border-bottom: 4px solid var(--c, #7ecfed);
+  box-shadow: 0 12px 26px rgba(0,0,0,.45);
+}
+.ig-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ig-info { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.ig-role { font-size: .75em; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #7ecfed; }
+.ig-name { font-size: 1.9em; font-weight: 700; line-height: 1.2; }
+.ig-desc { font-size: .95em; line-height: 1.7; color: #d0e2f4; }
+.ig-modes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
+.ig-mode {
+  padding: 9px 20px; border-radius: 999px; cursor: pointer;
+  border: 0.5px solid rgba(255,255,255,.5);
+  background: rgba(255,255,255,.14); color: #e8f2ff;
+  font-family: inherit; font-size: .95em; font-weight: 700;
+  transition: background .2s, transform .2s;
+}
+.ig-mode:hover { background: rgba(126,207,237,.45); transform: translateY(-2px); }
+.ig-result { font-size: .9em; font-weight: 700; color: #8fe0a4; min-height: 1.4em; }
+
+@media (max-width: 620px) {
+  .ig-card { flex-direction: column; text-align: center; }
+  .ig-modes { justify-content: center; }
+}
+
+/* ── Quiz (rendered inside the shared .mg-box overlay) ── */
+.mg-box.quiz { width: min(600px, 94vw); }
+.qz { width: 100%; display: flex; flex-direction: column; gap: 12px; color: #e8f2ff; }
+.qz-top { display: flex; justify-content: space-between; font-size: .73em; letter-spacing: .1em; text-transform: uppercase; color: #7ecfed; }
+.qz-q { font-size: 1.1em; font-weight: 700; line-height: 1.45; text-align: center; }
+.qz-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.qz-choice {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  padding: 8px 8px 10px; border-radius: 10px; cursor: pointer;
+  border: 2px solid rgba(255,255,255,.3); background: rgba(255,255,255,.07); color: #e8f2ff;
+  font-family: inherit; font-size: .88em; line-height: 1.35; text-align: center;
+  transition: background .15s, border-color .15s, transform .15s;
+}
+.qz-choice svg { width: 100%; height: auto; display: block; border-radius: 6px; }
+.qz-choice:hover:not(:disabled) { background: rgba(126,207,237,.22); border-color: #7ecfed; transform: translateY(-2px); }
+.qz-choice:disabled { cursor: default; }
+.qz-choice.right { background: rgba(68,200,100,.28); border-color: #5ec47a; }
+.qz-choice.wrong { background: rgba(224,85,85,.28);  border-color: #e05555; }
+.qz-choice.fade  { opacity: .55; }
+.qz-explain { font-size: .86em; line-height: 1.6; color: #c4d8ec; min-height: 3.2em; text-align: center; }
+.qz-foot { display: flex; justify-content: center; gap: 8px; }
+.qz-score { font-size: 2.4em; font-weight: 700; text-align: center; color: #f0c060; }
+.qz .mg-btn { background: #1a5fa8; border-color: #1a5fa8; }
+.qz .mg-btn.outline { background: transparent; color: #e8f2ff; border-color: rgba(255,255,255,.5); }
+</style>
+</head>
+<body class="font-md">
+
+<nav class="ig-nav">
+  <a href="../../index.html">← Home</a>
+  <span>Subaru Observatory · Instrument Mini Games</span>
+</nav>
+
+<main class="ig-main">
+  <div class="ig-card" id="ig-card">
+    <div class="ig-pic"><img id="ig-img" alt=""></div>
+    <div class="ig-info">
+      <div class="ig-role" id="ig-role"></div>
+      <div class="ig-name" id="ig-name"></div>
+      <div class="ig-desc" id="ig-desc"></div>
+      <div class="ig-modes">
+        <button class="ig-mode" onclick="playQuiz()">Quiz</button>
+        <button class="ig-mode" onclick="playInteractive()">Interactive</button>
+      </div>
+      <div class="ig-result" id="ig-result"></div>
+    </div>
+  </div>
+</main>
+
+<!-- The instrument table and the interactive mini games are loaded straight
+     from Universe Hunting, so there is only one copy of that code. -->
+<script src="../telescope-pro/js/data.js"></script>
+<script src="../telescope-pro/js/minigames.js"></script>
+<script src="js/quiz-visuals.js"></script>
+<script src="js/quiz-data.js"></script>
+<script>
+/* ============================================================
+   Standalone launcher for the instrument mini games.
+   URL:  index.html?instr=<instrument id>&mode=quiz|interactive
+   ============================================================ */
+const PARAMS   = new URLSearchParams(location.search);
+const INSTR_ID = PARAMS.get('instr');
+const INSTR    = Object.prototype.hasOwnProperty.call(UH_INSTRUMENTS, INSTR_ID) ? UH_INSTRUMENTS[INSTR_ID] : null;
+const PHOTOS   = { focas: '../../assets/instruments/focus.jpg' };
+const MODE     = PARAMS.get('mode');
+// Arriving from a home-page card (?mode=quiz|interactive): the game opens
+// straight away and closing or finishing it returns to the home page, so this
+// page's own instrument card is never shown in between.
+const DIRECT   = MODE === 'quiz' || MODE === 'interactive';
+function goHome() { location.href = '../../index.html'; }
+
+// minigames.js's own quitObservation() resets Universe Hunting state that does
+// not exist on this page — replace it with a plain "close the overlay".
+function quitObservation() {
+  _mgActive = false;
+  _mgQueue  = [];
+  _closeMiniGameOverlay();
+  if (DIRECT) goHome();
+}
+
+function setResult(text) { document.getElementById('ig-result').textContent = text; }
+
+/* ── Interactive (the Universe Hunting mini game for this instrument) ── */
+function playInteractive() {
+  setResult('');
+  startMiniGameQueue([INSTR_ID], () => { if (DIRECT) goHome(); else setResult('✓ Interactive game cleared!'); });
+}
+
+/* ── Quiz ── */
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function playQuiz() {
+  setResult('');
+  _closeMiniGameOverlay();                 // make sure no other overlay is open
+  QV.installDefs();
+  const questions = QUIZ_DATA[INSTR_ID] || [];
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="mg-overlay" id="mg-overlay">
+      <div class="mg-box quiz">
+        <div class="mg-header">
+          <div class="mg-title"><span class="mg-instr-dot" style="background:${INSTR.color}"></span><span id="qz-title"></span></div>
+          <button class="mg-close" onclick="quitObservation()" title="Close quiz">✕</button>
+        </div>
+        <div class="mg-game-area" id="mg-game-area" style="overflow-y:auto;justify-content:flex-start"></div>
+      </div>
+    </div>`);
+  document.getElementById('qz-title').textContent = INSTR.name + ' — Quiz';
+  const area = document.getElementById('mg-game-area');
+
+  if (!questions.length) {
+    const box = el('div', 'qz');
+    box.append(el('div', 'qz-q', 'Quiz coming soon'),
+               el('div', 'qz-explain', 'The questions for ' + INSTR.name + ' have not been written yet.'));
+    const b = el('button', 'mg-btn', 'Back'); b.onclick = quitObservation;
+    const foot = el('div', 'qz-foot'); foot.append(b);
+    box.append(foot); area.append(box);
+    return;
+  }
+
+  let idx = 0, score = 0;
+
+  function showQuestion() {
+    const Q = questions[idx];
+    area.textContent = '';
+    const box = el('div', 'qz');
+    const top = el('div', 'qz-top');
+    top.append(el('span', '', Q.t || ''), el('span', '', `Question ${idx + 1} / ${questions.length}`));
+
+    const explain = el('div', 'qz-explain', 'Choose one of the two pictures.');
+    const next    = el('button', 'mg-btn', idx + 1 < questions.length ? 'Next →' : 'See result');
+    next.style.visibility = 'hidden';
+    next.onclick = () => { idx++; idx < questions.length ? showQuestion() : showScore(); };
+
+    // The two picture choices, left/right order picked at random
+    const pair = [{ c: Q.right, ok: true }, { c: Q.wrong, ok: false }];
+    if (Math.random() < 0.5) pair.reverse();
+    const choices = el('div', 'qz-choices');
+    const btns = pair.map(p => {
+      const b = el('button', 'qz-choice');
+      b.innerHTML = QV.render(p.c);                 // SVG built by our own drawers
+      b.append(el('span', '', p.c[2] || String(p.c[1]).replace('|', ' ')));
+      b.onclick = () => {
+        btns.forEach((x, k) => {
+          x.disabled = true;
+          if (pair[k].ok) x.classList.add('right'); else x.classList.add(x === b ? 'wrong' : 'fade');
+        });
+        if (p.ok) score++;
+        explain.textContent = (p.ok ? '✓ Correct. ' : '✗ Not quite. ') + (Q.why || '');
+        next.style.visibility = 'visible';
+        next.focus();
+      };
+      choices.append(b);
+      return b;
+    });
+
+    const foot = el('div', 'qz-foot'); foot.append(next);
+    box.append(top, el('div', 'qz-q', Q.q), choices, explain, foot);
+    area.append(box);
+  }
+
+  function showScore() {
+    area.textContent = '';
+    const box = el('div', 'qz');
+    box.append(el('div', 'qz-q', INSTR.name + ' quiz complete'),
+               el('div', 'qz-score', `${score} / ${questions.length}`),
+               el('div', 'qz-explain', score === questions.length ? 'Perfect — you know this instrument!' : 'Try again to get them all.'));
+    const again = el('button', 'mg-btn outline', 'Try again');
+    again.onclick = () => { idx = 0; score = 0; showQuestion(); };
+    const done  = el('button', 'mg-btn', 'Done'); done.onclick = quitObservation;
+    const foot  = el('div', 'qz-foot'); foot.append(again, done);
+    box.append(foot); area.append(box);
+    setResult(`Quiz score: ${score} / ${questions.length}`);
+  }
+
+  showQuestion();
+}
+
+/* ── Page setup ── */
+if (!INSTR) {
+  // Unknown or missing instrument id → nothing to play here
+  location.replace('../../index.html');
+} else {
+  document.title = INSTR.name + ' Mini Games — Subaru Observatory';
+  document.getElementById('ig-card').style.setProperty('--c', INSTR.color);
+  document.getElementById('ig-img').src = PHOTOS[INSTR_ID] || `../../assets/instruments/${INSTR_ID}.jpg`;
+  document.getElementById('ig-role').textContent = INSTR.shortRole + ' · ' + INSTR.year;
+  document.getElementById('ig-name').textContent = INSTR.name;
+  document.getElementById('ig-desc').textContent = INSTR.description;
+
+  if (DIRECT) document.querySelector('.ig-main').style.visibility = 'hidden';
+  if (MODE === 'quiz')             playQuiz();
+  else if (MODE === 'interactive') playInteractive();
+}
+</script>
+</body>
+</html>

@@ -2,6 +2,15 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- RETIRED — AO Hunter was replaced by Universe Hunting (games/telescope-pro).
+     Anyone who still reaches this page (old bookmark, typed URL) is sent back
+     to the home page before the game loads. The leftover demo-mode flag is
+     cleared too. To bring the game back, delete this <script> block and
+     restore the card in the home page. -->
+<script>
+try { sessionStorage.removeItem('ao_demo'); } catch (e) {}
+window.location.replace('../../index.html');
+</script>
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Adaptive Optics Star Hunting — Subaru Observatory</title>
 <link rel="stylesheet" href="css/game.css">
