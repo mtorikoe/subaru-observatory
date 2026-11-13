@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Universe Hunting</title>
+  <link rel="stylesheet" href="css/uh.css">
+</head>
+<body class="font-md">
+
+  <!-- ── Header ───────────────────────────────────────────── -->
+  <header class="uh-header">
+    <a href="../index.html" class="uh-back-link">← Home</a>
+    <h1>Universe Hunting</h1>
+    <div class="uh-header-right">
+      <div class="uh-fontsize-ctrl" title="Text size">
+        <span class="uh-fontsize-label">Text:</span>
+        <button data-size="sm" onclick="setFontSize('sm')">A</button>
+        <button data-size="md" class="active" onclick="setFontSize('md')">A</button>
+        <button data-size="lg" onclick="setFontSize('lg')">A</button>
+      </div>
+      <div id="score-display" class="uh-score-box">Score: 0 | Revealed: 0</div>
+    </div>
+  </header>
+
+  <!-- ── Body: left column + divider + right side ─────────── -->
+  <div class="uh-body">
+
+    <aside class="uh-left-col" id="target-panel"></aside>
+
+    <div class="uh-divider-v" id="divider-left" title="Drag to resize"></div>
+
+    <div class="uh-right-side">
+
+      <!-- UPPER: bundled star field + target markers -->
+      <div class="uh-starfield-area">
+        <canvas id="sv-canvas"></canvas>
+      </div>
+
+      <div class="uh-divider-h" id="divider-bottom" title="Drag to resize"></div>
+
+      <!-- LOWER: tab bar + tab content -->
+      <div class="uh-lower">
+
+        <div class="uh-tab-bar">
+          <div class="uh-tab active" data-tab="instruments" onclick="switchTab('instruments')">Instruments</div>
+          <div class="uh-tab"       data-tab="collection"  onclick="switchTab('collection')">My Collection</div>
+          <div class="uh-tab-spacer"></div>
+          <button id="observe-btn" disabled>Observe</button>
+        </div>
+
+        <div id="tab-instruments" class="uh-tab-content">
+
+          <div class="carousel-wrap">
+            <div class="carousel-header">Instruments — click to add · click again to remove</div>
+            <div class="carousel-body">
+              <button class="carousel-arrow" id="carousel-left"  onclick="carouselLeft()">‹</button>
+              <div id="carousel-rail" class="uh-carousel-scroll"></div>
+              <button class="carousel-arrow" id="carousel-right" onclick="carouselRight()">›</button>
+            </div>
+            <div id="instr-desc"></div>
+          </div>
+
+          <div class="v-divider" id="divider-mid" title="Drag to resize"></div>
+
+          <div class="construction-wrap">
+            <div class="construction-header">Assembled telescope</div>
+            <canvas id="construction-canvas"></canvas>
+            <div class="uh-construction" id="construction-view">
+              <span class="uh-construction-empty">No instruments selected</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div id="tab-collection" class="uh-tab-content" style="display:none">
+          <div id="collection-panel"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <div id="uh-tooltip"></div>
+
+  <!-- ── Scripts ──────────────────────────────────────────── -->
+  <script src="js/data.js"></script>
+  <script src="js/target-coords.js"></script>
+  <script src="assets/catalog/bright-stars.js"></script>
+  <script src="assets/catalog/constellations.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/resize.js"></script>
+  <script src="js/starview.js"></script>
+  <script src="js/targetpanel.js"></script>
+  <script src="js/instruments.js"></script>
+  <script src="js/minigames.js"></script>
+  <script src="js/game.js"></script>
+
+</body>
+</html>
