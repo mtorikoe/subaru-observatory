@@ -117,7 +117,7 @@ main {
   display: flex;
   gap: 18px;
   overflow-x: auto;
-  padding: 10px 4px 26px;          /* room for the cards' lift + shadow */
+  padding: 34px 30px;              /* room for the round haze around each card */
   scrollbar-width: none;
 }
 .row-track::-webkit-scrollbar { display: none; }
@@ -130,16 +130,24 @@ main {
 .scope-panel {
   flex: 0 0 auto;
   width: min(400px, 44%);
-  aspect-ratio: 1 / 1;             /* square */
+  aspect-ratio: 1 / 1;
   position: relative;
-  border-radius: 8px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.22);   /* light black tint, with the photo blurred behind it */
+}
+/* The "atmosphere": a round patch of blur with no outline. The mask fades it
+   out toward the rim, so there is no visible edge. It sits behind the canvas
+   so the telescope itself is not faded. */
+.scope-panel::before {
+  content: '';
+  position: absolute; inset: -6%;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.22);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 52%, transparent 100%);
+          mask-image: radial-gradient(circle closest-side, #000 52%, transparent 100%);
+  pointer-events: none;
 }
-#scope-canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
+#scope-canvas { position: relative; width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
 #scope-canvas.dragging { cursor: grabbing; }
 .scope-caption {                   /* name of the highlighted focus */
   position: absolute; left: 0; right: 0; bottom: 12px;
@@ -152,25 +160,39 @@ main {
 }
 
 /* Row 1 extras: drag-to-scroll */
-#instrument-track { cursor: grab; user-select: none; -webkit-user-select: none; gap: 14px; }
+#instrument-track { cursor: grab; user-select: none; -webkit-user-select: none; gap: 30px; }
 #instrument-track.dragging { cursor: grabbing; }
 #instrument-track.dragging .inst { pointer-events: none; }
 
 /* ── INSTRUMENT (row 1) = glass card + options that slide out beside it ── */
 .inst { display: flex; align-items: stretch; outline: none; }
 
+/* Round "atmosphere" shared by the instrument cards and the game cards.
+   The tint + blur live on a circular ::before, and a radial mask fades that
+   layer out toward the rim, so a card is a soft round haze with no border or
+   edge while its text stays crisp. */
+.inst-card, .game-card { position: relative; isolation: isolate; }
+.inst-card::before, .game-card::before {
+  content: '';
+  position: absolute; inset: -14%;
+  z-index: -1;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 58%, transparent 100%);
+          mask-image: radial-gradient(circle closest-side, #000 58%, transparent 100%);
+  transition: background .2s;
+  pointer-events: none;
+}
+
 .inst-card {
-  width: 170px;
-  padding: 18px 16px;
-  display: flex; flex-direction: column; justify-content: center; gap: 8px;
-  background: rgba(255, 255, 255, 0.075);
-  border: 0.5px solid rgba(255, 255, 255, 0.075);
-  border-radius: 2px;
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
+  width: 170px; height: 170px;       /* a circle */
+  padding: 0 24px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  text-align: center;
   cursor: pointer;
-  transition: transform .2s, box-shadow .2s, border-color .2s;
+  transition: transform .2s;
 }
 .inst-name { font-size: 17px; font-weight: 700; color: var(--text); line-height: 1.25; }
 .inst-role { font-size: 12px; color: var(--muted); line-height: 1.45; }
@@ -189,11 +211,10 @@ main {
 }
 .inst:hover .inst-card,
 .inst:focus .inst-card,
-.inst:focus-within .inst-card {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.075);
-  border-color: rgba(255,255,255,0.075);
-}
+.inst:focus-within .inst-card { transform: translateY(-3px); }
+.inst:hover .inst-card::before,
+.inst:focus .inst-card::before,
+.inst:focus-within .inst-card::before { background: rgba(255, 255, 255, 0.34); }
 .inst-opt {
   display: block; width: 138px; text-align: center; white-space: nowrap;
   padding: 9px 10px; border-radius: 450px;
@@ -209,27 +230,22 @@ main {
 
 /* ── GAME CARD (rows 2 and 3) ── */
 .game-card {
-  background: rgba(255, 255, 255, 0.075);   /* frosted, not solid white */
-  border: 0.5px solid rgba(255, 255, 255, 0.075);
-  border-radius: 2px;
-  padding: 28px 24px;
+  width: 360px; height: 360px;       /* a circle */
+  max-width: 80vw;
+  padding: 0 54px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  width: 380px;
-  max-width: 80vw;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-align: center;
   text-decoration: none;
   color: inherit;
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.35);
-  transition: border-color .2s, transform .2s, box-shadow .2s;
+  transition: transform .2s;
 }
-.game-card:hover {
-  border-color: rgba(252, 253, 253, 0.075);
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
-}
+.game-card::before { inset: -8%; }
+.game-card:hover { transform: translateY(-3px); }
+.game-card:hover::before { background: rgba(255, 255, 255, 0.34); }
 
 .card-icon   { font-size: 32px; }
 .card-method {
@@ -240,14 +256,12 @@ main {
   color: var(--accent);
 }
 .card-title  { font-size: 18px; font-weight: 700; color: var(--text); line-height: 1.3; }
-.card-desc   { font-size: 14px; color: var(--muted); line-height: 1.75; flex: 1; }
+.card-desc   { font-size: 14px; color: var(--muted); line-height: 1.6; }
 .card-tag    {
   margin-top: 4px;
   font-size: 13px;
   font-weight: 600;
   color: var(--green);
-  border-top: 1px solid var(--border);
-  padding-top: 10px;
 }
 
 /* ── FOOTER ── */
@@ -281,13 +295,13 @@ footer {
   <section class="row">
     <div class="section-label">Instrument Mini Games</div>
     <div class="scope-row">
+      <div class="row-track" id="instrument-track"></div>
       <!-- 3-D Subaru Telescope (js/telescope3d.js). Hovering an instrument card
            lights up the place on the telescope where that instrument is installed. -->
       <div class="scope-panel">
         <canvas id="scope-canvas" aria-label="Rotatable 3-D model of the Subaru Telescope"></canvas>
         <div class="scope-caption" id="scope-caption"></div>
       </div>
-      <div class="row-track" id="instrument-track"></div>
     </div>
   </section>
 
