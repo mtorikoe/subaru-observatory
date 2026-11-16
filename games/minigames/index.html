@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Instrument Mini Games — Subaru Observatory</title>
+<!-- Re-use the mini-game overlay styles (.mg-*) from Universe Hunting -->
+<link rel="stylesheet" href="../telescope-pro/css/uh.css">
+<style>
+/* ============================================================
+   Look of the mini-game page — follows the home page design:
+   the night-sky photo, warm starlight text, Milky Way gold accents,
+   and soft white "atmosphere" hazes instead of bordered boxes.
+
+   uh.css (Universe Hunting) is loaded only for the .mg-* overlay
+   layout. Its light theme is replaced here by overriding its colour
+   variables, so Universe Hunting itself is not changed.
+   ============================================================ */
+:root {
+  --text:    #f4f1ea;    /* warm starlight white */
+  --muted:   #cfcabf;    /* dome grey */
+  --dim:     #9a958c;
+  --accent:  #e6c88f;    /* Milky Way gold */
+  --accent2: #e6c88f;
+  --gold:    #e6c88f;
+  --border:  rgba(255, 255, 255, 0.16);
+  --bg:      transparent;
+  --panel:   transparent;
+  --deep:    transparent;
+  --success: #a6e3b4;
+  --danger:  #f2a0a0;
+  --canvas-bg: rgba(7, 7, 11, 0.45);
+  --haze:    rgba(255, 255, 255, 0.22);
+}
+
+/* uh.css is written for a fixed one-screen layout; undo that for this page */
+html, body { height: auto; overflow: auto; }
+body {
+  min-height: 100vh;
+  display: flex; flex-direction: column;
+  background: #07070b url('../../assets/bg.jpg') left bottom / cover fixed;
+  color: var(--text);
+}
+body::before {                      /* same soft top/bottom darkening as the home page */
+  content: '';
+  position: fixed; inset: 0;
+  background: linear-gradient(180deg, rgba(7,7,11,.55) 0%, rgba(7,7,11,0) 34%, rgba(7,7,11,0) 72%, rgba(7,7,11,.6) 100%);
+  pointer-events: none;
+}
+
+/* ── Header: white haze fading into the page ── */
+.ig-nav {
+  position: relative; z-index: 1; isolation: isolate;
+  display: flex; align-items: center; gap: 22px;
+  padding: 16px 36px;
+  color: var(--text);
+  text-shadow: 0 1px 6px #000;
+}
+.ig-nav::before {
+  content: '';
+  position: absolute; left: 0; right: 0; top: 0; bottom: -22px;
+  z-index: -1;
+  background: var(--haze);
+  backdrop-filter: blur(30px); -webkit-backdrop-filter: blur(30px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+          mask-image: linear-gradient(to bottom, #000 55%, transparent);
+  pointer-events: none;
+}
+.ig-nav a { color: var(--accent); text-decoration: none; font-size: .85em; letter-spacing: .1em; }
+.ig-nav a:hover { color: #fff; }
+.ig-nav span { font-size: .85em; letter-spacing: .3em; text-transform: uppercase; }
+
+/* ── Instrument card (only seen when the page is opened without ?mode=) ── */
+.ig-main {
+  position: relative; z-index: 1;
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 32px 20px;
+}
+.ig-card {
+  position: relative; isolation: isolate;
+  width: min(460px, 92vw); aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 64px;
+  text-align: center;
+}
+.ig-card::before {                  /* round haze, like the home-page cards */
+  content: '';
+  position: absolute; inset: -8%;
+  z-index: -1; border-radius: 50%;
+  background: var(--haze);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 58%, transparent 100%);
+          mask-image: radial-gradient(circle closest-side, #000 58%, transparent 100%);
+  pointer-events: none;
+}
+.ig-info { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
+.ig-role { font-size: .72em; letter-spacing: .3em; text-transform: uppercase; color: var(--accent); }
+.ig-name { font-size: 1.9em; font-weight: 400; line-height: 1.2; }
+.ig-desc { font-size: .9em; line-height: 1.6; color: var(--muted); }
+.ig-modes { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 6px; }
+.ig-mode, .mg-btn {
+  padding: 9px 24px; border-radius: 999px; cursor: pointer;
+  border: none;
+  background: rgba(255,255,255,.2); color: var(--text);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  font-family: inherit; font-size: .9em; font-weight: 700; letter-spacing: .04em;
+  transition: background .2s;
+}
+.ig-mode:hover, .mg-btn:hover { background: rgba(255,255,255,.36); border: none; }
+.mg-btn.outline { background: rgba(255,255,255,.1); color: var(--text); }
+.mg-btn.outline:hover { background: rgba(255,255,255,.3); color: var(--text); }
+.ig-result { font-size: .9em; color: var(--accent); letter-spacing: .06em; min-height: 1.4em; }
+
+/* ── Game window (.mg-*, shared by the interactive games and the quiz) ──
+   Crisp and light: an off-white panel with square corners, dark text and no
+   blur, so every detail of a game is easy to read. Colour is kept for
+   meaning only — green = correct, red = wrong.
+   The colour variables are re-set here for the window alone; the page behind
+   it keeps the home-page palette. */
+.mg-overlay {
+  --text:    #1b1b1f;
+  --muted:   #55524c;
+  --accent:  #1b1b1f;
+  --accent2: #1b1b1f;
+  --border:  #c9c5bc;
+  --success: #1e7a36;
+  --danger:  #b3261e;
+  --canvas-bg: #e9e6df;
+  --on-canvas: #1b1b1f;      /* text placed directly on the light play area */
+  background: rgba(7, 7, 11, 0.8);
+}
+.mg-box {
+  background: #f4f2ec;
+  border: 1px solid #1b1b1f;
+  border-radius: 0;
+  box-shadow: none;
+  color: var(--text);
+}
+.mg-header  { background: #f4f2ec; border-bottom: 1px solid var(--border); }
+.mg-title   { font-size: .8em; font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--text); }
+.mg-instr-dot { display: none; }
+.mg-close   { color: var(--text); border-radius: 0; }
+.mg-close:hover { color: #fff; background: #1b1b1f; }
+.mg-teaches { background: #f4f2ec; border-bottom: 1px solid var(--border); font-size: .85em; color: var(--muted); }
+.mg-game-area { background: var(--canvas-bg); }
+.mg-game-area canvas { border-radius: 0; }
+.mg-status  { background: #f4f2ec; border-top: 1px solid var(--border); color: var(--muted); }
+.mg-status.ok { color: var(--success); }
+.mg-btn, .mg-btn.outline {
+  border-radius: 0; backdrop-filter: none; -webkit-backdrop-filter: none;
+  border: 1px solid #1b1b1f; background: #1b1b1f; color: #f4f2ec;
+}
+.mg-btn.outline { background: transparent; color: #1b1b1f; }
+.mg-btn:hover, .mg-btn.outline:hover { border: 1px solid #1b1b1f; background: #3a3a40; color: #f4f2ec; }
+
+/* ── Quiz ── */
+.mg-box.quiz { width: min(600px, 94vw); }
+.qz { width: 100%; display: flex; flex-direction: column; gap: 12px; color: var(--text); }
+.qz-top { display: flex; justify-content: space-between; font-size: .72em; letter-spacing: .3em; text-transform: uppercase; color: var(--muted); }
+.qz-q { font-size: 1.15em; font-weight: 700; line-height: 1.45; text-align: center; }
+.qz-choices { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.qz-choice {
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px;
+  padding: 8px 8px 10px; border-radius: 0; cursor: pointer;
+  border: 1px solid #1b1b1f; background: #fff; color: var(--text);
+  font-family: inherit; font-size: .9em; line-height: 1.35; text-align: center;
+  transition: transform .15s, box-shadow .15s;
+}
+.qz-choice svg { width: 100%; height: auto; display: block; border-radius: 0; }
+.qz-choice:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 0 0 2px #1b1b1f; }
+.qz-choice:disabled { cursor: default; }
+.qz-choice.right { border-color: var(--success); box-shadow: 0 0 0 3px var(--success); background: #e6f3e9; }
+.qz-choice.wrong { border-color: var(--danger);  box-shadow: 0 0 0 3px var(--danger);  background: #f8e7e5; }
+.qz-choice.fade  { opacity: .5; }
+.qz-explain { font-size: .9em; line-height: 1.6; color: var(--muted); min-height: 3.2em; text-align: center; }
+.qz-foot { display: flex; justify-content: center; gap: 8px; }
+.qz-score { font-size: 2.6em; font-weight: 700; text-align: center; color: var(--text); }
+</style>
+</head>
+<body class="font-md">
+
+<nav class="ig-nav">
+  <a href="../../index.html">← Home</a>
+  <span>Subaru Observatory · Instrument Mini Games</span>
+</nav>
+
+<main class="ig-main">
+  <div class="ig-card" id="ig-card">
+    <div class="ig-info">
+      <div class="ig-role" id="ig-role"></div>
+      <div class="ig-name" id="ig-name"></div>
+      <div class="ig-desc" id="ig-desc"></div>
+      <div class="ig-modes">
+        <button class="ig-mode" onclick="playQuiz()">Quiz</button>
+        <button class="ig-mode" onclick="playInteractive()">Interactive</button>
+      </div>
+      <div class="ig-result" id="ig-result"></div>
+    </div>
+  </div>
+</main>
+
+<!-- The instrument table and the interactive mini games are loaded straight
+     from Universe Hunting, so there is only one copy of that code. -->
+<script src="../telescope-pro/js/data.js"></script>
+<script src="../telescope-pro/js/minigames.js"></script>
+<script src="js/quiz-visuals.js"></script>
+<script src="js/quiz-data.js"></script>
+<script>
+/* ============================================================
+   Standalone launcher for the instrument mini games.
+   URL:  index.html?instr=<instrument id>&mode=quiz|interactive
+   ============================================================ */
+const PARAMS   = new URLSearchParams(location.search);
+const INSTR_ID = PARAMS.get('instr');
+const INSTR    = Object.prototype.hasOwnProperty.call(UH_INSTRUMENTS, INSTR_ID) ? UH_INSTRUMENTS[INSTR_ID] : null;
+const MODE     = PARAMS.get('mode');
+// Arriving from a home-page card (?mode=quiz|interactive): the game opens
+// straight away and closing or finishing it returns to the home page, so this
+// page's own instrument card is never shown in between.
+const DIRECT   = MODE === 'quiz' || MODE === 'interactive';
+function goHome() { location.href = '../../index.html'; }
+
+// minigames.js's own quitObservation() resets Universe Hunting state that does
+// not exist on this page — replace it with a plain "close the overlay".
+function quitObservation() {
+  _mgActive = false;
+  _mgQueue  = [];
+  _closeMiniGameOverlay();
+  if (DIRECT) goHome();
+}
+
+function setResult(text) { document.getElementById('ig-result').textContent = text; }
+
+/* ── Interactive (the Universe Hunting mini game for this instrument) ── */
+function playInteractive() {
+  setResult('');
+  startMiniGameQueue([INSTR_ID], () => { if (DIRECT) goHome(); else setResult('✓ Interactive game cleared!'); });
+}
+
+/* ── Quiz ── */
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function playQuiz() {
+  setResult('');
+  _closeMiniGameOverlay();                 // make sure no other overlay is open
+  QV.installDefs();
+  const questions = QUIZ_DATA[INSTR_ID] || [];
+
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="mg-overlay" id="mg-overlay">
+      <div class="mg-box quiz">
+        <div class="mg-header">
+          <div class="mg-title"><span class="mg-instr-dot" style="background:${INSTR.color}"></span><span id="qz-title"></span></div>
+          <button class="mg-close" onclick="quitObservation()" title="Close quiz">✕</button>
+        </div>
+        <div class="mg-game-area" id="mg-game-area" style="overflow-y:auto;justify-content:flex-start"></div>
+      </div>
+    </div>`);
+  document.getElementById('qz-title').textContent = INSTR.name + ' — Quiz';
+  const area = document.getElementById('mg-game-area');
+
+  if (!questions.length) {
+    const box = el('div', 'qz');
+    box.append(el('div', 'qz-q', 'Quiz coming soon'),
+               el('div', 'qz-explain', 'The questions for ' + INSTR.name + ' have not been written yet.'));
+    const b = el('button', 'mg-btn', 'Back'); b.onclick = quitObservation;
+    const foot = el('div', 'qz-foot'); foot.append(b);
+    box.append(foot); area.append(box);
+    return;
+  }
+
+  let idx = 0, score = 0;
+
+  function showQuestion() {
+    const Q = questions[idx];
+    area.textContent = '';
+    const box = el('div', 'qz');
+    const top = el('div', 'qz-top');
+    top.append(el('span', '', Q.t || ''), el('span', '', `Question ${idx + 1} / ${questions.length}`));
+
+    const explain = el('div', 'qz-explain', 'Choose one of the two pictures.');
+    const next    = el('button', 'mg-btn', idx + 1 < questions.length ? 'Next →' : 'See result');
+    next.style.visibility = 'hidden';
+    next.onclick = () => { idx++; idx < questions.length ? showQuestion() : showScore(); };
+
+    // The two picture choices, left/right order picked at random
+    const pair = [{ c: Q.right, ok: true }, { c: Q.wrong, ok: false }];
+    if (Math.random() < 0.5) pair.reverse();
+    const choices = el('div', 'qz-choices');
+    const btns = pair.map(p => {
+      const b = el('button', 'qz-choice');
+      b.innerHTML = QV.render(p.c);                 // SVG built by our own drawers
+      b.append(el('span', '', p.c[2] || String(p.c[1]).replace('|', ' ')));
+      b.onclick = () => {
+        btns.forEach((x, k) => {
+          x.disabled = true;
+          if (pair[k].ok) x.classList.add('right'); else x.classList.add(x === b ? 'wrong' : 'fade');
+        });
+        if (p.ok) score++;
+        explain.textContent = (p.ok ? '✓ Correct. ' : '✗ Not quite. ') + (Q.why || '');
+        next.style.visibility = 'visible';
+        next.focus();
+      };
+      choices.append(b);
+      return b;
+    });
+
+    const foot = el('div', 'qz-foot'); foot.append(next);
+    box.append(top, el('div', 'qz-q', Q.q), choices, explain, foot);
+    area.append(box);
+  }
+
+  function showScore() {
+    area.textContent = '';
+    const box = el('div', 'qz');
+    box.append(el('div', 'qz-q', INSTR.name + ' quiz complete'),
+               el('div', 'qz-score', `${score} / ${questions.length}`),
+               el('div', 'qz-explain', score === questions.length ? 'Perfect — you know this instrument!' : 'Try again to get them all.'));
+    const again = el('button', 'mg-btn outline', 'Try again');
+    again.onclick = () => { idx = 0; score = 0; showQuestion(); };
+    const done  = el('button', 'mg-btn', 'Done'); done.onclick = quitObservation;
+    const foot  = el('div', 'qz-foot'); foot.append(again, done);
+    box.append(foot); area.append(box);
+    setResult(`Quiz score: ${score} / ${questions.length}`);
+  }
+
+  showQuestion();
+}
+
+/* ── Page setup ── */
+if (!INSTR) {
+  // Unknown or missing instrument id → nothing to play here
+  location.replace('../../index.html');
+} else {
+  document.title = INSTR.name + ' Mini Games — Subaru Observatory';
+  document.getElementById('ig-role').textContent = INSTR.shortRole + ' · ' + INSTR.year;
+  document.getElementById('ig-name').textContent = INSTR.name;
+  document.getElementById('ig-desc').textContent = INSTR.description;
+
+  if (DIRECT) document.querySelector('.ig-main').style.visibility = 'hidden';
+  if (MODE === 'quiz')             playQuiz();
+  else if (MODE === 'interactive') playInteractive();
+}
+</script>
+</body>
+</html>

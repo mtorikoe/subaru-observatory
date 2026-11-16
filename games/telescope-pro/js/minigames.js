@@ -13,6 +13,7 @@
 let _mgQueue    = [];   // remaining instrument ids to run
 let _mgOnDone   = null; // callback when all games passed
 let _mgActive   = false;
+let _mgCurrentId = null;   // instrument whose game is on screen
 
 // ── Entry point called by triggerObservation() in game.js ──
 function startMiniGameQueue(instrumentIds, onAllPassed) {
@@ -37,27 +38,31 @@ function _runNextMiniGame() {
 }
 
 // ── Overlay shell ──────────────────────────────────────────
-// Each mini-game renders into #mg-game-area inside this overlay
+// Each mini-game renders into #mg-game-area inside this overlay.
+// Every row keeps its natural height (no flex shrinking) and the box scrolls
+// if it is taller than the screen — otherwise a tall game, or the "mission
+// complete" note, squeezes the play area and its contents spill over the text.
 function _showMiniGameOverlay(instrId) {
   const instr = UH_INSTRUMENTS[instrId];
   if (!instr) { _runNextMiniGame(); return; } // skip unknown instrument
 
   // Remove any existing overlay first
   _closeMiniGameOverlay();
+  _mgCurrentId = instrId;
 
   const html = `
     <div class="mg-overlay" id="mg-overlay">
-      <div class="mg-box">
-        <div class="mg-header">
+      <div class="mg-box" style="overflow-y:auto">
+        <div class="mg-header" style="flex-shrink:0">
           <div class="mg-title">
             <span class="mg-instr-dot" style="background:${instr.color}"></span>
             ${instr.name}
           </div>
           <button class="mg-close" onclick="quitObservation()" title="Quit observation">✕</button>
         </div>
-        <div class="mg-teaches" id="mg-teaches"></div>
-        <div class="mg-game-area" id="mg-game-area"></div>
-        <div class="mg-status" id="mg-status"></div>
+        <div class="mg-teaches" id="mg-teaches" style="flex-shrink:0"></div>
+        <div class="mg-game-area" id="mg-game-area" style="flex:0 0 auto"></div>
+        <div class="mg-status" id="mg-status" style="flex-shrink:0"></div>
       </div>
     </div>`;
 
@@ -73,11 +78,55 @@ function _closeMiniGameOverlay() {
 }
 
 // ── Called when player passes current mini-game ────────────
+// The game is NOT closed straight away. A "mission complete" note with a
+// short explanation is added under it, and the overlay stays up until the
+// player presses the button (or ✕) — so there is time to look and read.
 function _miniGamePassed() {
-  _closeMiniGameOverlay();
-  // Brief pause before next game so it doesn't feel instant
-  setTimeout(_runNextMiniGame, 300);
+  const box = document.querySelector('#mg-overlay .mg-box');
+  if (!box) { setTimeout(_runNextMiniGame, 300); return; }      // overlay already gone
+  if (document.getElementById('mg-done')) return;               // already shown
+
+  const instr = UH_INSTRUMENTS[_mgCurrentId] || {};
+  const text  = MG_DONE_TEXT[_mgCurrentId] || instr.description || '';
+  const last  = _mgQueue.length === 0;
+  const next  = () => { _closeMiniGameOverlay(); setTimeout(_runNextMiniGame, 300); };
+
+  box.insertAdjacentHTML('beforeend', `
+    <div id="mg-done" style="flex-shrink:0;padding:14px 18px 16px;border-top:1px solid var(--border);background:var(--bg);color:var(--text)">
+      <div style="font-size:.8em;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--success)">✓ Mission complete — ${instr.name || ''}</div>
+      <div style="font-size:.87em;line-height:1.65;margin-top:6px">${text}</div>
+      <div style="text-align:center;margin-top:12px">
+        <button class="mg-btn" id="mg-done-btn">${last ? 'Finish' : 'Next instrument →'}</button>
+      </div>
+    </div>`);
+  document.getElementById('mg-done-btn').addEventListener('click', next);
+  // From here ✕ means "I have finished reading", not "give up the observation"
+  const x = box.querySelector('.mg-close');
+  if (x) { x.onclick = next; x.title = 'Close'; }
+  document.getElementById('mg-done').scrollIntoView({ block: 'nearest' });
 }
+
+// ── What the player just did, and what the real instrument does ──
+// Shown on the "mission complete" note. One entry per instrument id.
+const MG_DONE_TEXT = {
+  'suprime-cam': 'You matched Suprime-Cam\'s view to the Moon: one picture covers about a full Moon of sky (34′×27′). That was the widest view of any 8-metre telescope, letting Subaru photograph whole galaxies and galaxy clusters in a single shot from 1999 until Hyper Suprime-Cam took over.',
+  'hsc':         'Hyper Suprime-Cam sees about nine full Moons of sky at once — roughly seven times more than Suprime-Cam — with an 870-megapixel camera at the top of the telescope. Astronomers use it to survey millions of distant galaxies and map the invisible dark matter between them.',
+  'fmos':        'You spread white light into its colours — a spectrum. FMOS did this for up to 400 objects at the same time, using 400 optical fibres placed on distant galaxies, so astronomers could measure how far away thousands of galaxies are.',
+  'focas':       'FOCAS is the Faint Object Camera And Spectrograph. As you saw, a long exposure lets faint light pile up until an object rises out of the noise; a slit then passes that object\'s light on to be spread into a spectrum. It studies some of the dimmest, most distant galaxies Subaru can reach.',
+  'comics':      'COMICS looked in the mid-infrared (8–25 µm), light we feel as heat. Cold dust hides stars in visible light, but warm dust glows at these wavelengths — so COMICS could see the dusty disks where planets form. Because everything warm glows there, the instrument itself had to be kept extremely cold.',
+  'moircs':      'MOIRCS is an infrared camera and spectrograph with a wide 4′×7′ field of view. A wide field means many galaxies in one picture, and with a mask of small slits it can take the spectra of dozens of them at the same time.',
+  'ircs':        'IRCS photographs and takes spectra in infrared light (1–5 µm), usually with adaptive optics for sharp images. Comparing brightness through several filters shows an object\'s temperature: cool objects such as brown dwarfs and planets are faint at short wavelengths and bright at long ones.',
+  'hds':         'Every element leaves its own pattern of dark lines in starlight. HDS, the High Dispersion Spectrograph, spreads visible light out so finely that these patterns can be told apart — revealing what a star is made of, and even how fast it is moving.',
+  'ird':         'A planet pulls its star to and fro. IRD watches the star\'s dark lines slide toward blue and red as it moves — a shift far smaller than shown here, measured against a laser "comb" of reference lines. It hunts for planets around small, cool red stars, which shine mostly in infrared.',
+  'ao36':        'The air above the telescope bends starlight and blurs every star. Adaptive optics measures that blur and bends a flexible mirror the opposite way, many times each second. AO36 was Subaru\'s first such system, with 36 actuators pushing the mirror.',
+  'ao188':       'Adaptive optics cancels the blur of the atmosphere with a mirror that changes shape about a thousand times a second. AO188 uses 188 actuators, and when no bright star is nearby it can create its own guide star by shining a laser into the upper atmosphere.',
+  'ao3k':        'AO3K is Subaru\'s newest adaptive optics, with about 3,000 actuators on its mirror. More actuators can copy finer ripples in the incoming light, giving the nearly perfect star images that planet-imaging instruments like SCExAO need.',
+  'ciao':        'CIAO was a coronagraph: a small mask blocks the bright centre of the star and a second stop removes the light that leaks around the mask\'s edge. With the glare gone, faint companions and dusty disks right beside the star become visible.',
+  'hiciao':      'Leftover starlight forms "speckles" that look just like planets. HiCIAO told them apart by watching through the night: the sky turns, so a real planet moves while speckles stay fixed to the instrument. Subtracting what stays fixed leaves the planet. This is how planets such as GJ 504 b were photographed.',
+  'scexao':      'SCExAO is the last link of a chain. The first adaptive optics sharpens the star, SCExAO\'s 2,000-actuator mirror corrects what is left thousands of times a second, and a coronagraph blocks the star. Only all three together make the sky dark enough to see a planet a million times fainter than its star.',
+  'charis':      'CHARIS takes a picture at many infrared wavelengths at once. Speckles shift with wavelength but a planet does not, so the planet can be picked out — and its brightness in each picture forms a spectrum whose dips reveal gases such as water vapour and methane in its atmosphere.',
+  'vampires':    'Starlight is unpolarized, but light bounced off dust becomes polarized. VAMPIRES takes two pictures through polarizing filters turned 90° apart and subtracts them: the star, identical in both, cancels out, leaving only the dust. It works in visible light and reveals disks and shells of dust very close to stars.',
+};
 
 // ── Player hits X — quit observation ──────────────────────
 function quitObservation() {
@@ -291,7 +340,7 @@ function _game_hsc() {
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:12px;width:100%">
-      <div style="font-size:1.15em;font-weight:700;color:#fff;text-align:center">Which view field is HSC?</div>
+      <div style="font-size:1.15em;font-weight:700;color:var(--on-canvas,#fff);text-align:center">Which view field is HSC?</div>
       <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap">
         ${options.map((o, i) => `
           <button class="mg-quiz-opt" data-i="${i}" style="background:#0a1220;border:2px solid #2a3a50;border-radius:8px;padding:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;font-family:inherit;transition:border-color .15s,opacity .15s">
@@ -584,351 +633,360 @@ function _game_ao(instrId, actuators, teachText) {
 }
 
 // ──────────────────────────────────────────────────────────
-// IRCS — Spectral resolution slider
-// Drag slider right to spread spectrum into finer lines.
-// A hidden pair of close lines must become distinguishable.
+// IRCS — infrared colours tell the temperature
+// Take a picture of a star and its faint companion through four
+// infrared filters (J, H, K, L′). The star fades toward longer
+// wavelengths while the companion brightens — so it must be cool.
 // ──────────────────────────────────────────────────────────
 function _game_ircs() {
-  _setTeaches('IRCS spreads starlight into wavelengths. Increase resolution until the hidden pair of spectral lines separates.');
+  _setTeaches('IRCS is an infrared camera and spectrograph. It photographs the sky through different infrared filters. Hot objects fade toward longer wavelengths and cool ones brighten, so comparing the pictures reveals the temperature of things too cool to shine in visible light.');
 
+  const W = 360, H = 212;
+  const FILTERS = [
+    { id: 'J',  wl: '1.25 µm', star: 1.00, comp: .10 },
+    { id: 'H',  wl: '1.65 µm', star: .88,  comp: .28 },
+    { id: 'K',  wl: '2.2 µm',  star: .72,  comp: .60 },
+    { id: 'L′', wl: '3.8 µm',  star: .52,  comp: 1.00 },
+  ];
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:ew-resize"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag slider right to increase spectral resolution</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
+    <div id="ircs-filters" style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+      ${FILTERS.map((f, i) => `<button class="mg-btn outline" id="ircs-f${i}" style="padding:7px 14px">${f.id}<br><span style="font-weight:400;font-size:.8em">${f.wl}</span></button>`).join('')}
+    </div>
+    <div id="ircs-hint" style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted);min-height:2.6em">Take a picture through each of the four infrared filters. Keep an eye on the faint companion beside the star.</div>
+    <div id="ircs-q" style="display:none;gap:8px;justify-content:center;margin-top:6px">
+      <button class="mg-btn" id="ircs-hot">Hot, like a blue star</button>
+      <button class="mg-btn" id="ircs-cool">Cool, like a brown dwarf</button>
+    </div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
+  const hint   = document.getElementById('ircs-hint');
+  const taken  = [false, false, false, false];
+  let cur = -1, done = false;
 
-  let resolution = 0; // 0–1
-  let dragging   = false;
-  let startX     = 0, startRes = 0;
-  let passed     = false;
-  let animId;
-
-  const sliderY   = 220, sliderMinX = 30, sliderMaxX = 330;
+  function blob(x, y, r, a) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.3, `rgba(255,240,225,${a * .6})`); g.addColorStop(1, 'rgba(255,230,210,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
 
   function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle = '#040810';
-    ctx.fillRect(0,0,360,260);
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
 
-    // Spectrum bar (rainbow gradient)
-    const specW = 300, specH = 60;
-    const specX = 30, specY = 60;
-    const rg = ctx.createLinearGradient(specX,0,specX+specW,0);
-    ['#ff2200','#ff7700','#ffee00','#44ff00','#00aaff','#5500ff'].forEach((c,i) => rg.addColorStop(i/5, c));
-    ctx.fillStyle = rg;
-    ctx.fillRect(specX, specY, specW, specH);
+    // ── The picture ──
+    const IX = 6, IY = 6, IS = 200;
+    ctx.fillStyle = '#000'; ctx.fillRect(IX, IY, IS, IS);
+    ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 1; ctx.strokeRect(IX + .5, IY + .5, IS - 1, IS - 1);
+    if (cur < 0) {
+      ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('Choose a filter to take a picture', IX + IS / 2, IY + IS / 2);
+    } else {
+      const f = FILTERS[cur];
+      ctx.save(); ctx.beginPath(); ctx.rect(IX, IY, IS, IS); ctx.clip();
+      for (let i = 0; i < 26; i++) { ctx.fillStyle = `rgba(255,255,255,${.15 + ((i * 73) % 10) * .03})`; ctx.fillRect(IX + (i * 137) % IS, IY + (i * 89) % IS, 1, 1); }
+      blob(IX + 82, IY + 112, 16 + 30 * f.star, .95);                 // the star
+      blob(IX + 142, IY + 66, 5 + 9 * f.comp, .25 + .75 * f.comp);     // the companion
+      ctx.restore();
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(`${f.id} filter · ${f.wl}`, IX + 6, IY + 15);
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '9px sans-serif';
+      ctx.fillText('star', IX + 70, IY + 172); ctx.fillText('companion', IX + 122, IY + 44);
+    }
 
-    // Draw spectral lines on top — lines become narrower (more separated) as resolution increases
-    // Hidden pair at positions 0.52 and 0.56
-    const lineWidth = Math.max(1, 18 * (1 - resolution));
-    const lines = [0.15, 0.30, 0.52, 0.56, 0.70, 0.88];
-    lines.forEach((pos, i) => {
-      const lx    = specX + pos * specW;
-      const alpha = i === 2 || i === 3
-        ? Math.min(1, resolution * 2.5)   // close pair only visible at higher res
-        : 1;
-      ctx.fillStyle = `rgba(0,0,0,${alpha})`;
-      ctx.fillRect(lx - lineWidth/2, specY, lineWidth, specH);
+    // ── Measured brightness ──
+    const CX = 222, CW = 132, BASE = 172, MAXH = 120, GWd = CW / 4;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Measured brightness', CX, 16);
+    ctx.fillStyle = '#8f96a3'; ctx.fillRect(CX, 24, 8, 8);
+    ctx.fillStyle = '#ffb060'; ctx.fillRect(CX + 44, 24, 8, 8);
+    ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '9px sans-serif';
+    ctx.fillText('star', CX + 11, 32); ctx.fillText('companion', CX + 55, 32);
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.beginPath(); ctx.moveTo(CX, BASE + .5); ctx.lineTo(CX + CW, BASE + .5); ctx.stroke();
+    FILTERS.forEach((f, i) => {
+      const x = CX + i * GWd + 5;
+      ctx.fillStyle = i === cur ? '#fff' : 'rgba(255,255,255,.6)'; ctx.font = (i === cur ? 'bold ' : '') + '10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(f.id, x + 11, BASE + 13);
+      if (!taken[i]) return;
+      ctx.fillStyle = '#8f96a3'; ctx.fillRect(x, BASE - MAXH * f.star, 10, MAXH * f.star);
+      ctx.fillStyle = '#ffb060'; ctx.fillRect(x + 12, BASE - MAXH * f.comp, 10, MAXH * f.comp);
     });
-
-    // "Resolved!" label when pair is visible
-    if (resolution > 0.5) {
-      const sep = (0.56 - 0.52) * specW - lineWidth;
-      if (sep > 2) {
-        ctx.fillStyle = '#44ee44';
-        ctx.font      = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Pair resolved!', specX + 0.54 * specW, specY - 8);
-      }
-    }
-
-    // Resolution label
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font      = '11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(`Resolution: R = ${Math.round(resolution * 1000 + 100)}`, 180, specY + specH + 18);
-
-    // Slider track
-    ctx.fillStyle = '#1a2530';
-    ctx.fillRect(sliderMinX, sliderY - 5, sliderMaxX - sliderMinX, 10);
-    // Knob
-    const knobX = sliderMinX + resolution * (sliderMaxX - sliderMinX);
-    ctx.fillStyle = '#7ecfed';
-    ctx.beginPath();
-    ctx.arc(knobX, sliderY, 11, 0, Math.PI*2);
-    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('shorter  ←  wavelength  →  longer', CX + CW / 2, BASE + 28);
   }
 
-  canvas.addEventListener('mousedown',  e => { const r=canvas.getBoundingClientRect(); dragging=true; startX=e.clientX-r.left; startRes=resolution; });
-  window.addEventListener('mousemove',  e => {
-    if (!dragging) return;
-    const r   = canvas.getBoundingClientRect();
-    const dx  = (e.clientX - r.left) - startX;
-    const span= sliderMaxX - sliderMinX;
-    resolution= Math.min(1, Math.max(0, startRes + dx/span));
-  });
-  window.addEventListener('mouseup', () => { dragging=false; });
-
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); const r=canvas.getBoundingClientRect(); dragging=true; startX=e.touches[0].clientX-r.left; startRes=resolution; }, {passive:false});
-  window.addEventListener('touchmove',  e => {
-    if (!dragging) return; e.preventDefault();
-    const r  = canvas.getBoundingClientRect();
-    const dx = (e.touches[0].clientX - r.left) - startX;
-    resolution= Math.min(1, Math.max(0, startRes + dx/(sliderMaxX-sliderMinX)));
-  }, {passive:false});
-  window.addEventListener('touchend', () => { dragging=false; });
-
-  function tick() {
-    if (!passed && resolution > 0.72) {
-      const sep = (0.56-0.52)*300 - Math.max(1, 18*(1-resolution));
-      if (sep > 4) {
-        passed = true;
-        _setStatus('✓ Spectral lines resolved — pair identified!', true);
-        cancelAnimationFrame(animId);
-        draw();
-        setTimeout(_miniGamePassed, 1000);
-        return;
-      }
-    }
-    if (!passed) {
-      _setStatus(resolution < 0.5 ? 'Increase resolution to find the hidden lines.' :
-                  'Almost there — keep going!', false);
-    }
-    draw();
-    animId = requestAnimationFrame(tick);
-  }
-
-  animId = requestAnimationFrame(tick);
-}
-
-// ──────────────────────────────────────────────────────────
-// HDS — Click the spectral line dots
-// Horizontal strips with tiny dots. Click 3 to pass.
-// ──────────────────────────────────────────────────────────
-function _game_hds() {
-  _setTeaches('HDS measures chemical elements in starlight. Click the absorption line markers to identify elements!');
-
-  const area = document.getElementById('mg-game-area');
-  area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:pointer"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Click all 3 spectral line markers</div>`;
-
-  const canvas = document.getElementById('mg-canvas');
-  const ctx    = canvas.getContext('2d');
-
-  const need    = 3;
-  const elements= ['Ca II K', 'Hα', 'Na I D'];
-  const strips  = 7;
-  const stripH  = 220 / strips;
-  const dotR    = 6;
-
-  // Place one real dot per element in a random strip, rest are dummies
-  const dots = [];
-  const usedStrips = new Set();
-
-  // Dots to find (one per element)
-  elements.forEach((el, ei) => {
-    let si;
-    do { si = Math.floor(Math.random() * strips); } while (usedStrips.has(si));
-    usedStrips.add(si);
-    const x = 50 + Math.random() * 260;
-    const y = 20 + si * stripH + stripH / 2;
-    dots.push({ x, y, label: el, found: false, real: true });
-  });
-
-  // Extra dummy dots (noise)
-  for (let i = 0; i < 8; i++) {
-    const si = Math.floor(Math.random() * strips);
-    dots.push({
-      x: 50 + Math.random() * 260,
-      y: 20 + si * stripH + stripH / 2,
-      label: null, found: false, real: false,
-    });
-  }
-
-  let found = 0;
-
-  function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle = '#040810';
-    ctx.fillRect(0,0,360,260);
-
-    // Spectrum strips
-    for (let i = 0; i < strips; i++) {
-      const y  = 20 + i * stripH;
-      const rg = ctx.createLinearGradient(30,0,330,0);
-      ['#ff2200','#ff7700','#ffee00','#44ff00','#00aaff','#5500ff'].forEach((c,j) => rg.addColorStop(j/5,c));
-      ctx.fillStyle = rg;
-      ctx.fillRect(30, y, 300, stripH - 2);
-      // Dark line across each strip (spectral pattern)
-      for (let j = 0; j < 6; j++) {
-        ctx.fillStyle='rgba(0,0,0,0.5)';
-        ctx.fillRect(30 + (j * 60 + 25), y, 3, stripH-2);
-      }
-    }
-
-    // Dots
-    dots.forEach(d => {
-      if (d.found) {
-        ctx.fillStyle = '#44ee44';
-        ctx.beginPath(); ctx.arc(d.x, d.y, dotR+2, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = '#fff';
-        ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
-        ctx.fillText(d.label || '?', d.x, d.y - dotR - 3);
+  FILTERS.forEach((f, i) => {
+    const b = document.getElementById('ircs-f' + i);
+    b.addEventListener('click', () => {
+      if (done) return;
+      cur = i; taken[i] = true; b.classList.remove('outline');
+      draw();
+      if (taken.every(Boolean)) {
+        hint.textContent = 'Compare the bars: the star fades toward longer wavelengths, the companion gets brighter. What kind of object is the companion?';
+        document.getElementById('ircs-q').style.display = 'flex';
       } else {
-        ctx.fillStyle = d.real ? 'rgba(255,200,0,0.9)' : 'rgba(255,255,255,0.3)';
-        ctx.beginPath(); ctx.arc(d.x, d.y, dotR, 0, Math.PI*2); ctx.fill();
+        hint.textContent = `Picture taken through the ${f.id} filter. ${taken.filter(Boolean).length} of 4 done.`;
       }
     });
-
-    ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.textAlign='left';
-    ctx.fillText(`${found} / ${need}`, 10, 15);
-  }
-
-  canvas.addEventListener('click', e => {
-    const r  = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-    dots.forEach(d => {
-      if (!d.found && Math.hypot(mx-d.x, my-d.y) < dotR + 5) {
-        if (d.real) {
-          d.found = true;
-          found++;
-          _setStatus(`Found ${d.label}! (${found}/${need})`, found===need);
-          draw();
-          if (found >= need) setTimeout(_miniGamePassed, 800);
-        } else {
-          _setStatus('Not an element line — look for the highlighted ones!', false);
-        }
-      }
-    });
+  });
+  document.getElementById('ircs-hot').addEventListener('click', () => {
+    if (!done) _setStatus('A hot object would be brightest at the short-wavelength end, like the star. Look at the bars again.', false);
+  });
+  document.getElementById('ircs-cool').addEventListener('click', () => {
+    if (done) return;
+    done = true;
+    _setStatus('✓ Right — brighter at longer wavelengths means cool. It is a brown dwarf, too cool to shine in visible light.', true);
+    setTimeout(_miniGamePassed, 1200);
   });
 
   draw();
 }
 
 // ──────────────────────────────────────────────────────────
-// IRD — Radial velocity wobble
-// Star with orbiting exoplanet on left.
-// Wobble graph on right. Click 3 wobble peaks to confirm.
+// HDS — Match element "fingerprints" to the star's spectrum
+// Top: the star's spectrum with dark absorption lines.
+// Below: the lines each element makes in the laboratory.
+// Point at an element to line its fingerprint up with the star,
+// click it to test. Find the 3 elements that are in the star.
 // ──────────────────────────────────────────────────────────
-function _game_ird() {
-  _setTeaches('IRD detects planets by measuring the tiny wobble they cause in a star. Click the wobble peaks to confirm the exoplanet!');
+function _game_hds() {
+  _setTeaches('Every chemical element removes its own colours from starlight, leaving dark lines — a fingerprint. HDS spreads the light out so finely that astronomers can read which elements a star is made of.');
 
+  const W = 360, H = 270;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:pointer"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Click the red wobble peaks on the velocity graph</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;cursor:pointer"></canvas>
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Point at an element to compare its lines with the star, then click to test it. Find the 3 elements in this star.</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
 
-  let t        = 0;
-  let found    = 0;
-  const need   = 3;
-  let animId;
+  // Wavelengths in nanometres (the strongest visible lines of each element)
+  const ELEMENTS = [
+    { id:'H',  name:'Hydrogen',  lines:[434.0, 486.1, 656.3] },
+    { id:'Na', name:'Sodium',    lines:[589.3] },
+    { id:'Ca', name:'Calcium',   lines:[393.4, 396.8] },
+    { id:'Mg', name:'Magnesium', lines:[517.5] },
+    { id:'Li', name:'Lithium',   lines:[670.8] },
+  ];
+  // This star: lithium is never present, and one of the other four is missing
+  const missing = ['H', 'Na', 'Ca', 'Mg'][Math.floor(Math.random() * 4)];
+  ELEMENTS.forEach(e => { e.present = e.id !== 'Li' && e.id !== missing; e.state = ''; });
+  const need = 3;
+  let found = 0, hover = -1, done = false;
 
-  // Pre-compute peak x positions (in graph space)
-  const graphX = 170, graphY = 50, graphW = 170, graphH = 160;
-  const period = graphW / 2.5; // px per period
-  const peaks  = []; // {x, y, clicked}
-  for (let i = 0; i < 4; i++) {
-    peaks.push({ x: graphX + 20 + i * period, y: graphY + graphH/2 - 50, clicked: false });
-  }
+  const X0 = 96, SW = 250, L0 = 380, L1 = 690;          // spectrum strip geometry
+  const lx = l => X0 + (l - L0) / (L1 - L0) * SW;
+  const STOPS = [[380,'#5a00b0'],[440,'#2030ff'],[490,'#00b0e0'],[530,'#20d040'],[580,'#f0e020'],[620,'#ff8000'],[690,'#c00000']];
+  const colourOf = l => { let c = STOPS[0][1]; STOPS.forEach(s => { if (l >= s[0] - 15) c = s[1]; }); return c; };
+  const ROW0 = 104, ROWH = 32;
+  const rowAt = y => { const i = Math.floor((y - ROW0) / ROWH); return i >= 0 && i < ELEMENTS.length ? i : -1; };
 
   function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle = '#040810';
-    ctx.fillRect(0,0,360,260);
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
 
-    // ── Star system (left half) ──
-    const starX = 80, starY = 130, starR = 22;
-    const orbitR = 55;
-    const pAngle = t * 0.025;
-    const planetX = starX + Math.cos(pAngle) * orbitR;
-    const planetY = starY + Math.sin(pAngle) * orbitR * 0.4; // elliptical
+    // ── The star's spectrum ──
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('Starlight', 8, 46);
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '9px sans-serif';
+    ctx.fillText('seen by HDS', 8, 59);
+    const rg = ctx.createLinearGradient(X0, 0, X0 + SW, 0);
+    STOPS.forEach(s => rg.addColorStop((s[0] - L0) / (L1 - L0), s[1]));
+    ctx.fillStyle = rg; ctx.fillRect(X0, 24, SW, 50);
+    ELEMENTS.forEach(e => { if (e.present) e.lines.forEach(l => { ctx.fillStyle = '#04060c'; ctx.fillRect(lx(l) - 1.2, 24, 2.4, 50); }); });
+    ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('blue', X0 + 14, 86); ctx.fillText('red', X0 + SW - 12, 86);
+    ctx.fillText('Fingerprints measured in the laboratory:', X0 + SW / 2, 98);
 
-    // Orbit path
-    ctx.beginPath();
-    ctx.ellipse(starX, starY, orbitR, orbitR*0.4, 0, 0, Math.PI*2);
-    ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
-
-    // Star glow
-    const sg = ctx.createRadialGradient(starX,starY,2,starX,starY,starR+8);
-    sg.addColorStop(0,'#fffde0'); sg.addColorStop(0.5,'#f0c040'); sg.addColorStop(1,'rgba(240,192,64,0)');
-    ctx.beginPath(); ctx.arc(starX,starY,starR+8,0,Math.PI*2);
-    ctx.fillStyle=sg; ctx.fill();
-    // Star
-    ctx.beginPath(); ctx.arc(starX,starY,starR,0,Math.PI*2);
-    ctx.fillStyle='#f0c040'; ctx.fill();
-    // Planet
-    ctx.beginPath(); ctx.arc(planetX, planetY, 6, 0, Math.PI*2);
-    ctx.fillStyle='#4080e0'; ctx.fill();
-
-    // "Exoplanet" label
-    ctx.fillStyle='rgba(64,128,224,0.8)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('exoplanet', planetX, planetY - 10);
-
-    // ── Velocity graph (right half) ──
-    // Frame
-    ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=1;
-    ctx.strokeRect(graphX, graphY, graphW, graphH);
-
-    // Axes
-    ctx.strokeStyle='rgba(255,255,255,0.3)';
-    ctx.beginPath(); ctx.moveTo(graphX, graphY+graphH/2); ctx.lineTo(graphX+graphW, graphY+graphH/2); ctx.stroke();
-
-    // Velocity curve (sine)
-    ctx.beginPath();
-    for (let px = 0; px <= graphW; px++) {
-      const vy = graphY + graphH/2 - Math.sin((px/graphW)*Math.PI*5) * 50;
-      px===0 ? ctx.moveTo(graphX+px, vy) : ctx.lineTo(graphX+px, vy);
-    }
-    ctx.strokeStyle='#7ecfed'; ctx.lineWidth=2; ctx.stroke();
-
-    // Peak markers (clickable)
-    peaks.forEach(p => {
-      if (p.clicked) {
-        ctx.fillStyle='#44ee44';
-        ctx.beginPath(); ctx.arc(p.x, p.y, 8, 0, Math.PI*2); ctx.fill();
-      } else {
-        ctx.fillStyle='rgba(220,80,80,0.9)';
-        ctx.beginPath(); ctx.arc(p.x, p.y, 6, 0, Math.PI*2); ctx.fill();
-      }
+    // ── Element fingerprints ──
+    ELEMENTS.forEach((e, i) => {
+      const y = ROW0 + i * ROWH;
+      if (i === hover && !e.state) { ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(0, y, W, ROWH - 4); }
+      ctx.textAlign = 'left'; ctx.font = 'bold 11px sans-serif';
+      ctx.fillStyle = e.state === 'yes' ? '#5fe07a' : e.state === 'no' ? 'rgba(255,255,255,.35)' : '#fff';
+      ctx.fillText((e.state === 'yes' ? '✓ ' : e.state === 'no' ? '✗ ' : '') + e.name, 8, y + 18);
+      ctx.fillStyle = '#000'; ctx.fillRect(X0, y + 3, SW, ROWH - 10);
+      ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.strokeRect(X0 + .5, y + 3.5, SW - 1, ROWH - 11);
+      ctx.globalAlpha = e.state === 'no' ? .3 : 1;
+      e.lines.forEach(l => { ctx.fillStyle = colourOf(l); ctx.fillRect(lx(l) - 1.5, y + 3, 3, ROWH - 10); });
+      ctx.globalAlpha = 1;
     });
 
-    // Labels
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px sans-serif'; ctx.textAlign='left';
-    ctx.fillText('RV (m/s)', graphX+2, graphY+10);
-    ctx.fillText('Time →', graphX+graphW-50, graphY+graphH/2+12);
+    // ── Guide lines: carry the pointed-at (or confirmed) fingerprint up to the star ──
+    ELEMENTS.forEach((e, i) => {
+      if (!(i === hover && !e.state) && e.state !== 'yes') return;
+      const y = ROW0 + i * ROWH;
+      ctx.strokeStyle = e.state === 'yes' ? 'rgba(95,224,122,.55)' : '#fff';
+      ctx.setLineDash([3, 3]); ctx.lineWidth = 1;
+      e.lines.forEach(l => { ctx.beginPath(); ctx.moveTo(lx(l), 20); ctx.lineTo(lx(l), y + 3); ctx.stroke(); });
+      ctx.setLineDash([]);
+    });
 
-    ctx.fillStyle='#fff'; ctx.font='bold 13px sans-serif'; ctx.textAlign='left';
-    ctx.fillText(`${found}/${need} peaks`, 8, 15);
-
-    t++;
-    animId = requestAnimationFrame(draw);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`${found} / ${need} elements`, 8, 15);
   }
 
+  const pos = e => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  canvas.addEventListener('mousemove', e => { hover = rowAt(pos(e).y); draw(); });
+  canvas.addEventListener('mouseleave', () => { hover = -1; draw(); });
   canvas.addEventListener('click', e => {
-    const r  = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-    peaks.forEach(p => {
-      if (!p.clicked && Math.hypot(mx-p.x, my-p.y) < 14) {
-        p.clicked = true;
-        found++;
-        _setStatus(`${found}/${need} peaks confirmed`, found===need);
-        if (found>=need) {
-          cancelAnimationFrame(animId);
-          setTimeout(_miniGamePassed, 700);
-        }
-      }
-    });
+    if (done) return;
+    const i = rowAt(pos(e).y); if (i < 0) return;
+    const el = ELEMENTS[i]; if (el.state) return;
+    if (el.present) {
+      el.state = 'yes'; found++;
+      _setStatus(`✓ ${el.name}: every line matches a dark line — it is in this star.`, true);
+      if (found >= need) { done = true; setTimeout(_miniGamePassed, 1400); }
+    } else {
+      el.state = 'no';
+      _setStatus(`✗ ${el.name}: the star has no dark line at that colour — not found here.`, false);
+    }
+    draw();
   });
 
-  animId = requestAnimationFrame(draw);
+  draw();
+}
+
+// ──────────────────────────────────────────────────────────
+// IRD — Doppler wobble
+// Left: a planet and its star circle each other (seen from above;
+// Earth is toward the bottom). Right: the star's spectral lines
+// slide toward blue when the star comes at us and toward red when
+// it moves away, and the velocity graph is traced at the same time.
+// Press Measure when the lines are shifted the furthest (3 times).
+// ──────────────────────────────────────────────────────────
+function _game_ird() {
+  _setTeaches('A planet tugs its star around in a small circle. When the star moves toward us its light is squeezed to bluer colours; when it moves away, stretched to redder ones. IRD measures this tiny shift of the star\'s lines — the Doppler wobble.');
+
+  const W = 360, H = 270;
+  const area = document.getElementById('mg-game-area');
+  area.innerHTML = `
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
+    <div style="text-align:center;margin-top:8px"><button id="ird-btn" class="mg-btn">Measure</button></div>
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Watch the dark lines slide. Press Measure when they are shifted the furthest to the red or to the blue.</div>`;
+
+  const canvas = document.getElementById('mg-canvas');
+  const ctx    = canvas.getContext('2d');
+  const btn    = document.getElementById('ird-btn');
+
+  const need = 3;
+  let t = 0, found = 0, done = false;
+  const marks = [];                         // {t, rv} measurements
+  const SPEED = 0.022;                      // orbit angle per frame
+  // Radial velocity: +1 = moving away from Earth (redshift), −1 = toward (blueshift)
+  const rvAt = tt => Math.cos(tt * SPEED);
+
+  const REST = [.14, .30, .47, .58, .76, .90];   // line positions (fraction of the strip)
+
+  function draw() {
+    if (document.getElementById('mg-canvas') !== canvas) return;      // game was closed
+    const a = t * SPEED, rv = rvAt(t);
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
+
+    // ── Orbit, seen from above ──
+    const cx = 80, cy = 112, pr = 54, sr = 9;
+    ctx.strokeStyle = 'rgba(255,255,255,.14)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, pr, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, sr, 0, Math.PI * 2); ctx.stroke();
+    const px = cx + Math.cos(a) * pr, py = cy + Math.sin(a) * pr;       // planet
+    const sx = cx - Math.cos(a) * sr, sy = cy - Math.sin(a) * sr;       // star, always opposite
+    // The star's colour tints with its motion (exaggerated so it can be seen)
+    const tint = rv > 0 ? `rgb(255,${Math.round(150 - 70 * rv)},${Math.round(110 - 80 * rv)})`
+                        : `rgb(${Math.round(255 + 90 * rv)},${Math.round(150 - 10 * rv)},${Math.round(110 - 140 * rv)})`;
+    const sg = ctx.createRadialGradient(sx, sy, 2, sx, sy, 26);
+    sg.addColorStop(0, '#fff'); sg.addColorStop(.35, tint); sg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sx, sy, 26, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = tint; ctx.beginPath(); ctx.arc(sx, sy, 11, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#7fb0ff'; ctx.beginPath(); ctx.arc(px, py, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('planet', px, py - 9);
+    // Arrow: the star's motion along our line of sight
+    if (Math.abs(rv) > .15) {
+      const len = 22 * rv, ax = sx + 20, ay0 = sy, ay1 = sy - len;      // up the screen = away from Earth
+      ctx.strokeStyle = rv > 0 ? '#ff7060' : '#70a8ff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ax, ay0); ctx.lineTo(ax, ay1);
+      ctx.moveTo(ax, ay1); ctx.lineTo(ax - 4, ay1 + Math.sign(len) * 5);
+      ctx.moveTo(ax, ay1); ctx.lineTo(ax + 4, ay1 + Math.sign(len) * 5); ctx.stroke();
+    }
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '10px sans-serif';
+    ctx.fillText('↓ to Earth', cx, 196);
+    ctx.fillStyle = rv > .15 ? '#ff8a7a' : rv < -.15 ? '#8ab8ff' : 'rgba(255,255,255,.6)';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.fillText(rv > .15 ? 'star moving AWAY' : rv < -.15 ? 'star moving TOWARD us' : 'moving sideways', cx, 212);
+
+    // ── Spectrum: lines slide with the motion ──
+    const SX = 168, SY = 34, SWd = 180, SH = 40, SHIFT = 9;
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('The star\'s spectrum (near-infrared)', SX, SY - 8);
+    const g = ctx.createLinearGradient(SX, 0, SX + SWd, 0);
+    g.addColorStop(0, '#c83a2a'); g.addColorStop(1, '#5a1010');
+    ctx.fillStyle = g; ctx.fillRect(SX, SY, SWd, SH);
+    ctx.save(); ctx.beginPath(); ctx.rect(SX, SY, SWd, SH); ctx.clip();
+    REST.forEach(p => { ctx.fillStyle = '#05060a'; ctx.fillRect(SX + p * SWd + rv * SHIFT - 1.5, SY, 3, SH); });
+    ctx.restore();
+    // Rest positions (the laser comb gives IRD these fixed reference marks)
+    REST.forEach(p => {
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(SX + p * SWd - .5, SY - 5, 1, 5); ctx.fillRect(SX + p * SWd - .5, SY + SH, 1, 5);
+    });
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px sans-serif';
+    ctx.textAlign = 'left';  ctx.fillText('← bluer', SX, SY + SH + 15);
+    ctx.textAlign = 'right'; ctx.fillText('redder →', SX + SWd, SY + SH + 15);
+    ctx.textAlign = 'center'; ctx.fillText('white ticks = position at rest', SX + SWd / 2, SY + SH + 15);
+
+    // ── Velocity graph, traced as time passes ──
+    const GX = 168, GY = 112, GW = 180, GH = 110, mid = GY + GH / 2, amp = 40, SPAN = 420;   // frames shown
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.strokeRect(GX + .5, GY + .5, GW - 1, GH - 1);
+    ctx.beginPath(); ctx.moveTo(GX, mid); ctx.lineTo(GX + GW, mid); ctx.stroke();
+    ctx.fillStyle = '#ff8a7a'; ctx.font = '8px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('away (red)', GX + 4, GY + 10);
+    ctx.fillStyle = '#8ab8ff'; ctx.fillText('toward (blue)', GX + 4, GY + GH - 4);
+    const xOf = tt => GX + GW - 12 - (t - tt) * (GW - 12) / SPAN;
+    ctx.beginPath();
+    for (let tt = Math.max(0, t - SPAN); tt <= t; tt += 2) {
+      const x = xOf(tt), y = mid - rvAt(tt) * amp;
+      tt === Math.max(0, t - SPAN) ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.stroke();
+    marks.forEach(m => {
+      const x = xOf(m.t); if (x < GX + 3) return;
+      ctx.fillStyle = m.rv > 0 ? '#ff7060' : '#70a8ff';
+      ctx.beginPath(); ctx.arc(x, mid - m.rv * amp, 5, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(xOf(t), mid - rv * amp, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.5)'; ctx.font = '8px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText('time →', GX + GW - 4, mid + 10);
+
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`${found} / ${need} measured`, 8, 15);
+    if (done) {
+      ctx.textAlign = 'center'; ctx.font = 'bold 11px sans-serif'; ctx.fillStyle = '#5fe07a';
+      ctx.fillText('A regular wobble — an unseen planet is pulling this star', W / 2, 250);
+    }
+
+    t++;
+    requestAnimationFrame(draw);
+  }
+
+  btn.addEventListener('click', () => {
+    if (done) return;
+    const rv = rvAt(t);
+    if (Math.abs(rv) < 0.9) {
+      _setStatus('Not yet — wait until the dark lines are as far from the white ticks as they get.', false);
+      return;
+    }
+    marks.push({ t, rv }); found++;
+    _setStatus(rv > 0 ? `Largest redshift measured — the star is moving away fastest. (${found}/${need})`
+                      : `Largest blueshift measured — the star is coming toward us fastest. (${found}/${need})`, found >= need);
+    if (found >= need) {
+      done = true;
+      _setStatus('✓ The shift repeats like clockwork: a planet is there, even though we never see it.', true);
+      setTimeout(_miniGamePassed, 2200);
+    }
+  });
+
+  requestAnimationFrame(draw);
 }
 
 // ──────────────────────────────────────────────────────────
@@ -951,7 +1009,9 @@ const FMOS_CONFIG = {
   pivotX:      34,    // where the light comes in — every sheet is pinned here
   pivotY:     145,
   sheetLength: 300,   // pivot → far end of each sheet
-  sheetWidth:   44,   // thickness of each sheet
+  sheetWidth:   44,   // thickness of each sheet at its far end
+  sheetNeck:     7,   // thickness where it leaves the prism (beams widen as they travel)
+  glow:         14,   // soft glow around each beam, px (0 = none)
   fanSpread:    44,   // total fan angle in degrees, top sheet ↔ bottom sheet
   dotGap:       26,   // distance from the end of a sheet to its colour dot
 
@@ -985,7 +1045,7 @@ function _game_fmos() {
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
     <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;touch-action:none"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Hold the dot at the end of the white light and swing it to the matching colour dot</div>`;
+    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Hold the dot at the end of the white beam and swing it to the matching colour dot</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
@@ -1013,68 +1073,100 @@ function _game_fmos() {
   let drag = null;            // { layer, angle, reveal, startX, startY }
   let passed = false;
 
-  function sheet(angle, fill, alpha) {
+  // One beam of light leaving the prism: narrow at the pivot, widening toward
+  // its end, bright near the source and with a soft glow of its own colour.
+  function sheet(angle, fill, alpha, additive) {
+    const L = C.sheetLength, w0 = C.sheetNeck / 2, w1 = C.sheetWidth / 2;
     ctx.save();
     ctx.translate(C.pivotX, C.pivotY);
     ctx.rotate(angle);
+    ctx.beginPath();
+    ctx.moveTo(0, -w0); ctx.lineTo(L, -w1); ctx.lineTo(L, w1); ctx.lineTo(0, w0); ctx.closePath();
+    if (additive) ctx.globalCompositeOperation = 'lighter';   // overlapping colours add up toward white
     ctx.globalAlpha = alpha;
-    ctx.fillStyle = fill;
-    ctx.fillRect(0, -C.sheetWidth / 2, C.sheetLength, C.sheetWidth);
+    ctx.shadowColor = fill; ctx.shadowBlur = C.glow;
+    ctx.fillStyle = fill; ctx.fill();
+    ctx.shadowBlur = 0;
+    // brighter core along the middle of the beam
+    const core = ctx.createLinearGradient(0, -w1, 0, w1);
+    core.addColorStop(0, 'rgba(255,255,255,0)'); core.addColorStop(.5, 'rgba(255,255,255,.38)'); core.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = core; ctx.fill();
     ctx.globalAlpha = 1;
-    ctx.strokeStyle = C.sheetEdge;
-    ctx.lineWidth = 1;
-    ctx.strokeRect(0, -C.sheetWidth / 2, C.sheetLength, C.sheetWidth);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = C.sheetEdge; ctx.lineWidth = 1; ctx.stroke();
     ctx.restore();
   }
 
   function draw() {
     ctx.clearRect(0, 0, W, H);
-    ctx.fillStyle = '#040810';
+    // Inside the spectrograph: dark, a little lighter around the optics
+    const bg = ctx.createRadialGradient(C.pivotX, C.pivotY, 10, C.pivotX, C.pivotY, W);
+    bg.addColorStop(0, '#101826'); bg.addColorStop(1, '#03060c');
+    ctx.fillStyle = bg;
     ctx.fillRect(0, 0, W, H);
 
-    // Light source glow where the light enters
-    const g = ctx.createRadialGradient(C.pivotX, C.pivotY, 0, C.pivotX, C.pivotY, 40);
-    g.addColorStop(0, 'rgba(255,255,255,0.7)');
-    g.addColorStop(1, 'rgba(255,255,255,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(C.pivotX, C.pivotY, 40, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
+    // The optical fibre that brings the starlight in from the telescope
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(-4, C.pivotY + 92);
+    ctx.bezierCurveTo(C.pivotX - 30, C.pivotY + 90, C.pivotX - 34, C.pivotY + 4, C.pivotX - 6, C.pivotY);
+    ctx.strokeStyle = '#3b4658'; ctx.lineWidth = 7; ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.lineCap = 'butt';
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
     ctx.font = '10px sans-serif';
     ctx.textAlign = 'left';
-    ctx.fillText('white light in', 4, C.pivotY + C.sheetWidth / 2 + 30);
+    ctx.fillText('optical fibre', 6, C.pivotY + 112);
+    ctx.fillText('(starlight in)', 6, C.pivotY + 124);
 
-    // Separated sheets, top of the fan first so lower ones overlap like fanned paper
+    // Separated beams. Where they still overlap near the prism they add up to white.
     placed.slice().sort((a, b) => a.angle - b.angle)
-      .forEach(p => sheet(p.angle, C.layers[p.layer].color, C.sheetAlpha));
+      .forEach(p => sheet(p.angle, C.layers[p.layer].color, C.sheetAlpha, true));
 
-    // Remaining white stack (a few offset edges make it read as a pile)
-    stack.forEach((_, k) => {
-      const off = (stack.length - 1 - k) * 1.2;
-      ctx.save(); ctx.translate(0, off); sheet(0, C.whiteColor, 1); ctx.restore();
-    });
+    // The light that is still mixed: one white beam
+    if (stack.length) sheet(0, C.whiteColor, 1);
 
-    // Sheet being pulled out: white → its colour as it separates
+    // Beam being pulled out: white → its colour as it separates
     if (drag) {
       sheet(drag.angle, C.whiteColor, 1);
       sheet(drag.angle, C.layers[drag.layer].color, C.sheetAlpha * drag.reveal);
     }
 
-    // Colour dots around the end of the fan
+    // The prism that splits the light, drawn as a small block of glass over the pivot
+    ctx.beginPath();
+    ctx.moveTo(C.pivotX - 14, C.pivotY + 20); ctx.lineTo(C.pivotX + 2, C.pivotY - 22); ctx.lineTo(C.pivotX + 18, C.pivotY + 20); ctx.closePath();
+    const glass = ctx.createLinearGradient(C.pivotX - 14, C.pivotY - 22, C.pivotX + 18, C.pivotY + 20);
+    glass.addColorStop(0, 'rgba(210,230,255,.55)'); glass.addColorStop(1, 'rgba(120,160,220,.22)');
+    ctx.fillStyle = glass; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 1.2; ctx.stroke();
+
+    // Colour targets around the end of the fan: a ring until its beam arrives, then lit
     dotOrder.forEach((li, slot) => {
       const [x, y] = dotPos(slot);
       const done = placed.some(p => p.layer === li);
+      const col = C.layers[li].color;
+      if (done) { ctx.shadowColor = col; ctx.shadowBlur = 16; }
       ctx.beginPath(); ctx.arc(x, y, C.dotR, 0, Math.PI * 2);
-      ctx.fillStyle = C.layers[li].color; ctx.fill();
-      ctx.strokeStyle = done ? '#ffffff' : 'rgba(255,255,255,0.35)';
+      ctx.fillStyle = col; ctx.globalAlpha = done ? 1 : .55; ctx.fill();
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+      ctx.strokeStyle = done ? '#ffffff' : 'rgba(255,255,255,0.5)';
       ctx.lineWidth = done ? 2.5 : 1; ctx.stroke();
     });
+    if (passed) {
+      ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'right';
+      ctx.fillText('a spectrum', W - 8, 16);
+    }
 
-    // Handle at the end of the stack (or following the dragged sheet)
-    if (stack.length && !passed) {
+    // Handle at the end of the white beam (or following the dragged beam)
+    if (stack.length && !passed || drag) {
       const a = drag ? drag.angle : 0;
       const hx = C.pivotX + Math.cos(a) * C.sheetLength, hy = C.pivotY + Math.sin(a) * C.sheetLength;
+      ctx.beginPath(); ctx.arc(hx, hy, C.handleR + 5, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.shadowColor = '#fff'; ctx.shadowBlur = 12;
       ctx.beginPath(); ctx.arc(hx, hy, C.handleR, 0, Math.PI * 2);
       ctx.fillStyle = '#ffffff'; ctx.fill();
+      ctx.shadowBlur = 0;
       ctx.strokeStyle = 'rgba(20,30,45,0.8)'; ctx.lineWidth = 2.5; ctx.stroke();
     }
   }
@@ -1258,225 +1350,312 @@ function _game_pfs() {
 }
 
 // ──────────────────────────────────────────────────────────
-// MOIRCS — 3-picture quiz: spot the MOIRCS wide-field image
+// MOIRCS — which camera has the wide field of view?
+// Three cameras look at the same real patch of sky (a Subaru image
+// of the Coma galaxy cluster). The wider the field of view, the
+// more galaxies fit in one picture — that one is MOIRCS.
 // ──────────────────────────────────────────────────────────
 function _game_moircs() {
-  _setTeaches('MOIRCS has a 4′×7′ near-infrared field — wider than typical cameras. Find the image that shows the most galaxies at once!');
+  _setTeaches('MOIRCS has a 4′×7′ field of view — wide for an infrared camera on a large telescope. A wider field means more galaxies caught in a single picture.');
 
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <div style="display:flex;gap:10px;justify-content:center;align-items:flex-end;padding:16px 0" id="moircs-cards">
-    </div>
-    <div style="text-align:center;font-size:13px;color:var(--muted)">Which image was taken by MOIRCS?</div>`;
+    <div style="display:flex;gap:12px;justify-content:center;align-items:flex-start;padding:10px 0" id="moircs-cards"></div>
+    <div style="text-align:center;font-size:13px;color:var(--muted)">Three cameras pointed at the same patch of sky. Which picture was taken by MOIRCS?</div>`;
 
-  // Build 3 canvas cards: one with many galaxies (MOIRCS), two with fewer
+  // Real picture: Coma cluster (Subaru). Each camera sees a square of this size (source pixels)
+  // around the same spot; a small square means a narrow, zoomed-in view.
+  const SRC = '../../assets/star-pic/cluster/coma-cluster.jpg';
   const cards = [
-    { label:'Camera A', galaxies:12, correct: false },
-    { label:'MOIRCS',   galaxies:28, correct: true  },
-    { label:'Camera B', galaxies:4,  correct: false },
+    { view: 672, cx: 1240, cy: 1240, correct: true,  name: 'MOIRCS — wide field' },
+    { view: 300, cx: 1180, cy: 1230, correct: false, name: 'Narrower camera' },
+    { view: 130, cx: 1079, cy: 1206, correct: false, name: 'Narrowest camera' },
   ];
-  // Shuffle
   cards.sort(() => Math.random() - 0.5);
-  const correctIdx = cards.findIndex(c => c.correct);
+  const S = 106;                                   // card size on screen
+  let done = false;
+
+  // Fallback if the photo cannot be loaded: soft-edged galaxies with bright cores
+  function fake(ctx, card) {
+    ctx.fillStyle = '#05060c'; ctx.fillRect(0, 0, S, S);
+    const zoom = 672 / card.view, n = Math.round(46 / (zoom * zoom)) + 1;
+    for (let s = 0; s < 60 / zoom; s++) { ctx.fillStyle = `rgba(255,255,255,${.2 + Math.random() * .5})`; ctx.fillRect(Math.random() * S, Math.random() * S, 1, 1); }
+    for (let g = 0; g < n; g++) {
+      const x = Math.random() * S, y = Math.random() * S, r = (2 + Math.random() * 3) * zoom;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(Math.random() * Math.PI); ctx.scale(1, .35 + Math.random() * .5);
+      const gr = ctx.createRadialGradient(0, 0, 0, 0, 0, r);
+      gr.addColorStop(0, 'rgba(255,244,220,.95)'); gr.addColorStop(.25, 'rgba(240,210,160,.5)'); gr.addColorStop(1, 'rgba(200,160,110,0)');
+      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+    }
+  }
 
   const container = document.getElementById('moircs-cards');
+  const img = new Image();
   cards.forEach((card, i) => {
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'text-align:center;cursor:pointer';
-    const canvas  = document.createElement('canvas');
-    canvas.width  = 100;
-    canvas.height = 90;
-    canvas.style.border = '2px solid #2a3a4a';
-    canvas.style.borderRadius = '4px';
-    canvas.dataset.idx = i;
-
-    // Draw the scene
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,100,90);
-    // Random stars
-    for (let s = 0; s < 20; s++) {
-      ctx.fillStyle='rgba(255,255,255,0.4)';
-      ctx.fillRect(Math.random()*100, Math.random()*90, 1, 1);
-    }
-    // Galaxies (small ellipses)
-    for (let g = 0; g < card.galaxies; g++) {
-      const gx = 5 + Math.random()*90, gy = 5 + Math.random()*80;
-      const rx = 3 + Math.random()*4,  ry = 2 + Math.random()*2;
-      const angle = Math.random()*Math.PI;
-      ctx.save();
-      ctx.translate(gx,gy); ctx.rotate(angle);
-      ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
-      ctx.fillStyle=`rgba(200,160,100,${0.5+Math.random()*0.4})`; ctx.fill();
-      ctx.restore();
-    }
-
+    const canvas = document.createElement('canvas');
+    canvas.width = S; canvas.height = S;
+    canvas.style.cssText = 'display:block;border:2px solid #8a8f98';
     const lbl = document.createElement('div');
-    lbl.textContent = card.label;
-    lbl.style.cssText = 'font-size:11px;color:rgba(255,255,255,0.5);margin-top:4px';
-
-    wrapper.appendChild(canvas);
-    wrapper.appendChild(lbl);
-    container.appendChild(wrapper);
+    lbl.textContent = 'Camera ' + 'ABC'[i];
+    lbl.style.cssText = 'font-size:12px;color:var(--muted);margin-top:5px';
+    wrapper.appendChild(canvas); wrapper.appendChild(lbl); container.appendChild(wrapper);
+    card.paint = ok => {
+      const c = canvas.getContext('2d');
+      if (ok) c.drawImage(img, card.cx - card.view / 2, card.cy - card.view / 2, card.view, card.view, 0, 0, S, S);
+      else fake(c, card);
+    };
+    card.paint(false);
 
     wrapper.addEventListener('click', () => {
+      if (done) return;
       if (card.correct) {
-        canvas.style.border = '3px solid #44ee44';
-        _setStatus('✓ Correct! MOIRCS captures the most galaxies in one shot.', true);
-        setTimeout(_miniGamePassed, 800);
+        done = true;
+        canvas.style.border = '3px solid #2fae52';
+        cards.forEach((k, j) => { container.children[j].lastChild.textContent = k.name; });
+        _setStatus('✓ Correct! The widest view holds the most galaxies — that is MOIRCS.', true);
+        setTimeout(_miniGamePassed, 1800);
       } else {
-        canvas.style.border = '3px solid #e05050';
-        _setStatus('Not quite — look for the image with the most galaxies.', false);
+        canvas.style.border = '3px solid #d9534f';
+        _setStatus('Not quite — that camera is zoomed in on a small patch. Look for the picture with the most galaxies.', false);
       }
     });
   });
+  img.onload = () => cards.forEach(c => c.paint(true));
+  img.src = SRC;
 }
 
 // ──────────────────────────────────────────────────────────
-// FOCAS — Hold button to accumulate light until galaxy appears
+// FOCAS — Faint Object Camera And Spectrograph
+// 1. Camera: hold the shutter open. A short exposure is mostly
+//    noise; as light adds up, the faint galaxy rises out of it.
+// 2. Spectrograph: click the galaxy to put the slit on it and
+//    spread its light into a spectrum.
 // ──────────────────────────────────────────────────────────
 function _game_focas() {
-  _setTeaches('FOCAS captures faint objects by accumulating light over time. Hold the button — release too early and the galaxy stays hidden!');
+  _setTeaches('FOCAS is built for very faint objects. A short exposure is mostly noise — keep the shutter open and the light adds up until the galaxy rises out of the noise. Then FOCAS can spread that light into a spectrum.');
 
+  const W = 360, H = 262, IH = 200, GW = 90, GH = 50, NEED_MIN = 30;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="220" style="display:block;margin:auto"></canvas>
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
     <div style="text-align:center;margin-top:8px">
-      <button id="focas-btn" class="mg-btn" style="font-size:16px;padding:10px 32px">Hold to expose</button>
-    </div>`;
+      <button id="focas-btn" class="mg-btn" style="font-size:16px;padding:10px 32px;touch-action:none">Hold to expose</button>
+    </div>
+    <div id="focas-hint" style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Hold the button to keep the shutter open. You can let go and continue — exposures add up.</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
   const btn    = document.getElementById('focas-btn');
+  const hint   = document.getElementById('focas-hint');
 
-  let exposure = 0; // 0–1
-  let holding  = false;
-  let animId;
+  // Small detector image, drawn enlarged so single pixels can be seen
+  const det = document.createElement('canvas'); det.width = GW; det.height = GH;
+  const dctx = det.getContext('2d'), frame = dctx.createImageData(GW, GH);
+  const signal = new Float32Array(GW * GH), noise = new Float32Array(GW * GH);
+  for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
+    const dx = x - 45, dy = y - 24, u = dx * .94 + dy * .34, v = -dx * .34 + dy * .94;     // tilted ellipse
+    signal[y * GW + x] = .34 * Math.exp(-(u * u) / 150 - (v * v) / 22) + .5 * Math.exp(-(u * u + v * v) / 5);
+  }
+  [[12, 9], [70, 12], [78, 40], [22, 42]].forEach(p => { signal[p[1] * GW + p[0]] += .5; });   // a few faint stars
+  const roll = () => { for (let i = 0; i < noise.length; i++) noise[i] = Math.random() + Math.random() + Math.random() - 1.5; };
+  roll();
+
+  let minutes = 0, holding = false, stage = 'expose', frameNo = 0;
+  const sigma = () => 1.15 / Math.sqrt(1 + minutes * 1.2);        // noise shrinks as light adds up
+  const snr   = () => .34 / (.5 * sigma());
 
   function draw() {
-    ctx.clearRect(0,0,360,220);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,220);
-
-    // Stars
-    for (let i=0;i<40;i++) {
-      const a=Math.min(1, exposure*2 + 0.05);
-      ctx.fillStyle=`rgba(255,255,255,${a*(0.3+((i*73)%10)*0.05)})`;
-      ctx.fillRect((i*137)%360,(i*97)%220,1,1);
+    if (document.getElementById('mg-canvas') !== canvas) return;      // game was closed
+    if (holding && stage === 'expose') {
+      minutes = Math.min(NEED_MIN, minutes + 0.11);
+      if (frameNo % 4 === 0) roll();                                   // new photons keep arriving
+      if (minutes >= NEED_MIN) {
+        stage = 'slit'; holding = false; btn.disabled = true; btn.textContent = 'Exposure complete';
+        hint.textContent = 'The galaxy is clear now. Click it to place the spectrograph slit on it.';
+        canvas.style.cursor = 'crosshair';
+        _setStatus('Picture taken — now use FOCAS as a spectrograph.', false);
+      }
     }
+    frameNo++;
 
-    // Faint galaxy (appears as exposure increases past 0.5)
-    if (exposure > 0.3) {
-      const alpha = Math.min(1, (exposure - 0.3) / 0.5);
-      const gx = 180, gy = 100, grx = 60, gry = 30;
-      const g = ctx.createRadialGradient(gx,gy,2,gx,gy,grx);
-      g.addColorStop(0, `rgba(200,160,100,${alpha*0.9})`);
-      g.addColorStop(0.5, `rgba(150,100,60,${alpha*0.4})`);
-      g.addColorStop(1, `rgba(100,60,20,0)`);
-      ctx.save();
-      ctx.scale(1, gry/grx);
-      ctx.beginPath(); ctx.arc(gx, gy*(grx/gry), grx, 0, Math.PI*2);
-      ctx.fillStyle = g; ctx.fill();
-      ctx.restore();
+    const s = sigma(), d = frame.data;
+    for (let i = 0; i < signal.length; i++) {
+      const v = Math.max(0, Math.min(1, .16 + signal[i] + noise[i] * s)) * 255;
+      d[i * 4] = v; d[i * 4 + 1] = v; d[i * 4 + 2] = v * 1.04; d[i * 4 + 3] = 255;
     }
+    dctx.putImageData(frame, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(det, 0, 0, W, IH);
 
-    // Exposure bar
-    ctx.fillStyle='#1a2530'; ctx.fillRect(10, 200, 340, 12);
-    ctx.fillStyle = exposure >= 0.8 ? '#44ee44' : '#7ecfed';
-    ctx.fillRect(10, 200, 340*exposure, 12);
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-    ctx.fillText(`Exposure: ${Math.round(exposure*100)}%`, 180, 198);
+    // Read-outs
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, IH, W, H - IH);
+    if (stage !== 'done') {
+      ctx.fillStyle = '#1c2632'; ctx.fillRect(10, IH + 22, 340, 10);
+      ctx.fillStyle = minutes >= NEED_MIN ? '#5fe07a' : '#fff';
+      ctx.fillRect(10, IH + 22, 340 * minutes / NEED_MIN, 10);
+      ctx.fillStyle = '#fff'; ctx.font = '11px sans-serif'; ctx.textAlign = 'left';
+      ctx.fillText(`Exposure time: ${Math.floor(minutes)} min`, 10, IH + 16);
+      ctx.textAlign = 'right';
+      ctx.fillText(`Signal-to-noise: ${snr().toFixed(1)}`, 350, IH + 16);
+      ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText(minutes < 4 ? 'Almost all noise — is anything there?' : minutes < 15 ? 'Something is appearing in the middle…' : 'Longer exposure → less noise → fainter objects', W / 2, IH + 48);
+    } else {
+      // Slit on the galaxy + its spectrum
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(118, 86, 124, 20);
+      ctx.fillStyle = '#fff'; ctx.font = '9px sans-serif'; ctx.textAlign = 'left'; ctx.fillText('slit', 246, 99);
+      const g = ctx.createLinearGradient(10, 0, 350, 0);
+      ['#5a00b0', '#2030ff', '#00b0e0', '#20d040', '#f0e020', '#ff8000', '#c00000'].forEach((c, j) => g.addColorStop(j / 6, c));
+      ctx.globalAlpha = .55; ctx.fillStyle = g; ctx.fillRect(10, IH + 8, 340, 26); ctx.globalAlpha = 1;
+      ctx.fillStyle = '#fff'; ctx.fillRect(246, IH + 6, 3, 30);                    // bright emission line
+      ctx.fillStyle = '#04060c'; ctx.fillRect(120, IH + 8, 2, 26); ctx.fillRect(180, IH + 8, 2, 26);
+      ctx.fillStyle = '#fff'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+      ctx.fillText('The galaxy\'s spectrum. Its lines tell how far away it is and what it is made of.', W / 2, IH + 52);
+    }
+    requestAnimationFrame(draw);
   }
 
-  function tick() {
-    if (holding && exposure < 1) {
-      exposure = Math.min(1, exposure + 0.008);
-    } else if (!holding && exposure > 0 && exposure < 0.8) {
-      exposure = Math.max(0, exposure - 0.012); // fade if released too early
+  const press   = e => { if (e) e.preventDefault(); if (stage === 'expose') holding = true; };
+  const release = () => { holding = false; };
+  btn.addEventListener('mousedown', press);
+  btn.addEventListener('touchstart', press, { passive: false });
+  window.addEventListener('mouseup', release);
+  window.addEventListener('touchend', release);
+
+  canvas.addEventListener('click', e => {
+    if (stage !== 'slit') return;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    if (Math.abs(x - 180) < 70 && Math.abs(y - 96) < 40) {
+      stage = 'done'; canvas.style.cursor = 'default';
+      hint.textContent = 'FOCAS = Faint Object Camera And Spectrograph: one instrument, two jobs.';
+      _setStatus('✓ Faint galaxy imaged and its spectrum taken!', true);
+      setTimeout(_miniGamePassed, 2600);
+    } else {
+      _setStatus('The slit must sit on the galaxy — click the glow in the middle.', false);
     }
+  });
 
-    if (exposure >= 0.8) {
-      _setStatus('✓ Galaxy captured! Exposure complete.', true);
-      cancelAnimationFrame(animId);
-      draw();
-      setTimeout(_miniGamePassed, 1000);
-      return;
-    }
-    draw();
-    animId = requestAnimationFrame(tick);
-  }
-
-  btn.addEventListener('mousedown',  () => { holding = true; });
-  btn.addEventListener('touchstart', e => { e.preventDefault(); holding = true; }, {passive:false});
-  window.addEventListener('mouseup',  () => { holding = false; });
-  window.addEventListener('touchend', () => { holding = false; });
-
-  animId = requestAnimationFrame(tick);
+  requestAnimationFrame(draw);
 }
 
 // ──────────────────────────────────────────────────────────
-// COMICS — Toggle to mid-IR view to reveal warm dust
+// COMICS — slide through wavelengths to find the warm dust
+// A young star sits inside a dusty cloud. The slider changes the
+// wavelength the camera looks at:
+//   visible   → the cold cloud is dark and hides the star
+//   near-IR   → starlight begins to pass through the dust
+//   mid-IR    → the warm dust itself glows (COMICS: 8–25 µm)
+// Tune into the COMICS range and take the picture.
 // ──────────────────────────────────────────────────────────
 function _game_comics() {
-  _setTeaches('COMICS sees thermal emission from warm dust invisible to optical cameras. Toggle to mid-infrared view to find the hidden dust!');
+  _setTeaches('Everything warm gives off light, but at wavelengths far too long for our eyes. COMICS looks in the mid-infrared (8–25 µm), where warm dust around young stars shines. Slide through the wavelengths and watch what appears.');
 
+  const W = 360, H = 250, IH = 196;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="220" style="display:block;margin:auto"></canvas>
-    <div style="text-align:center;margin-top:8px">
-      <button id="ir-toggle" class="mg-btn">Switch to Mid-IR View</button>
-    </div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
+    <div class="mg-row" style="width:min(360px,100%);margin:8px auto 0">
+      <span class="mg-label" style="min-width:0">Wavelength</span>
+      <input id="comics-wl" class="mg-slider" type="range" min="0" max="100" value="4">
+    </div>
+    <div id="comics-info" style="text-align:center;margin-top:4px;font-size:13px;color:var(--muted);min-height:2.6em"></div>
+    <div style="text-align:center;margin-top:6px"><button id="comics-shot" class="mg-btn">Take image</button></div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
-  const btn    = document.getElementById('ir-toggle');
-  let ir       = false;
-  let clicked  = false;
+  const slider = document.getElementById('comics-wl');
+  const info   = document.getElementById('comics-info');
+  const shot   = document.getElementById('comics-shot');
+  let done = false;
+
+  const LMIN = 0.4, LMAX = 25;                                   // micrometres, logarithmic slider
+  const wl   = () => LMIN * Math.pow(LMAX / LMIN, slider.value / 100);
+  const frac = l => Math.log(l / LMIN) / Math.log(LMAX / LMIN);
+  const step = (a, b, x) => { const t = Math.max(0, Math.min(1, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+  // Fixed star field and cloud shape
+  const stars = []; for (let i = 0; i < 90; i++) stars.push([(i * 137.5) % W, (i * 89.3) % IH, .3 + ((i * 73) % 10) * .06]);
+  const cloud = [[180, 98, 62], [140, 110, 44], [222, 92, 46], [170, 70, 40], [198, 128, 42], [118, 86, 30], [246, 118, 30]];
+  const dust  = [[180, 98, 60, 1], [150, 112, 34, .7], [214, 90, 36, .7], [186, 124, 30, .55]];
 
   function draw() {
-    ctx.clearRect(0,0,360,220);
-    ctx.fillStyle = ir ? '#1a0a00' : '#040810';
-    ctx.fillRect(0,0,360,220);
+    const l = wl();
+    const through = step(.8, 3, l);            // how well starlight gets through the dust
+    const warm    = step(4, 10, l);            // how brightly the dust itself glows
 
-    // Stars (always)
-    for (let i=0;i<40;i++) {
-      ctx.fillStyle=`rgba(255,255,255,${0.2+((i*73)%10)*0.05})`;
-      ctx.fillRect((i*137)%360,(i*97)%220,1,1);
+    // Sky: in the mid-infrared even the sky and the telescope glow a little
+    ctx.fillStyle = `rgb(${Math.round(4 + 34 * warm)},${Math.round(8 + 8 * warm)},${Math.round(16 - 8 * warm)})`;
+    ctx.fillRect(0, 0, W, IH);
+    stars.forEach(s => { ctx.fillStyle = `rgba(255,255,255,${s[2] * (1 - .85 * warm)})`; ctx.fillRect(s[0], s[1], 1.4, 1.4); });
+
+    // The cold dust cloud: an opaque dark shape in visible light, clearing in the infrared
+    ctx.globalAlpha = 1 - through;
+    ctx.fillStyle = '#020308';
+    cloud.forEach(c => { ctx.beginPath(); ctx.arc(c[0], c[1], c[2], 0, Math.PI * 2); ctx.fill(); });
+    ctx.globalAlpha = 1;
+
+    // The young star inside
+    const sa = through * (1 - .45 * warm);
+    if (sa > .01) {
+      const g = ctx.createRadialGradient(180, 98, 0, 180, 98, 22);
+      g.addColorStop(0, `rgba(255,250,235,${sa})`); g.addColorStop(.3, `rgba(255,190,120,${sa * .7})`); g.addColorStop(1, 'rgba(255,150,80,0)');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(180, 98, 22, 0, Math.PI * 2); ctx.fill();
     }
 
-    if (!ir) {
-      // Optical: dark disk — just a dark region, no glow
-      ctx.beginPath(); ctx.arc(180,100,55,0,Math.PI*2);
-      ctx.fillStyle='#040810'; ctx.fill();
-      ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=1; ctx.stroke();
-      ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='11px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('No dust visible (optical)', 180, 180);
-    } else {
-      // Mid-IR: glowing dust ring around young star
-      const g = ctx.createRadialGradient(180,100,15,180,100,70);
-      g.addColorStop(0,'rgba(255,100,0,0)');
-      g.addColorStop(0.4,'rgba(255,100,0,0.8)');
-      g.addColorStop(0.7,'rgba(200,60,0,0.4)');
-      g.addColorStop(1,'rgba(200,60,0,0)');
-      ctx.beginPath(); ctx.arc(180,100,70,0,Math.PI*2);
-      ctx.fillStyle=g; ctx.fill();
-      // Central star
-      ctx.beginPath(); ctx.arc(180,100,10,0,Math.PI*2);
-      ctx.fillStyle='#fffde0'; ctx.fill();
-      ctx.fillStyle='rgba(255,200,0,0.6)'; ctx.font='11px sans-serif'; ctx.textAlign='center';
-      ctx.fillText('Warm dust ring revealed!', 180, 180);
+    // Warm dust glowing by its own heat
+    if (warm > .01) {
+      ctx.globalCompositeOperation = 'lighter';
+      dust.forEach(d => {
+        const g = ctx.createRadialGradient(d[0], d[1], d[2] * .15, d[0], d[1], d[2]);
+        g.addColorStop(0, `rgba(255,170,60,${.75 * warm * d[3]})`); g.addColorStop(.6, `rgba(230,80,20,${.4 * warm * d[3]})`); g.addColorStop(1, 'rgba(160,30,0,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(d[0], d[1], d[2], 0, Math.PI * 2); ctx.fill();
+      });
+      ctx.globalCompositeOperation = 'source-over';
     }
 
-    ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='10px sans-serif'; ctx.textAlign='left';
-    ctx.fillText(ir ? 'MID-IR VIEW' : 'OPTICAL VIEW', 10, 15);
+    const band = l < .75 ? 'VISIBLE LIGHT' : l < 5 ? 'NEAR-INFRARED' : 'MID-INFRARED';
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`${band} · ${l < 1 ? l.toFixed(2) : l.toFixed(1)} µm`, 8, 16);
+
+    // ── Wavelength scale ──
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, IH, W, H - IH);
+    const X0 = 14, SW = W - 28, y = IH + 14, x = f => X0 + f * SW;
+    const rb = ctx.createLinearGradient(x(0), 0, x(frac(.75)), 0);
+    ['#5a00b0', '#2030ff', '#20d040', '#f0e020', '#ff8000', '#c00000'].forEach((c, j) => rb.addColorStop(j / 5, c));
+    ctx.fillStyle = rb;        ctx.fillRect(x(0), y, x(frac(.75)) - x(0), 12);
+    ctx.fillStyle = '#7a1a14'; ctx.fillRect(x(frac(.75)), y, x(frac(5)) - x(frac(.75)), 12);
+    ctx.fillStyle = '#4a0f0c'; ctx.fillRect(x(frac(5)), y, x(1) - x(frac(5)), 12);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('visible', (x(0) + x(frac(.75))) / 2, y + 24);
+    ctx.fillText('near-infrared', (x(frac(.75)) + x(frac(5))) / 2, y + 24);
+    ctx.fillText('mid-infrared', (x(frac(5)) + x(1)) / 2, y + 24);
+    // What COMICS can see
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.strokeRect(x(frac(8)), y - 3, x(1) - x(frac(8)), 18);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 9px sans-serif';
+    ctx.fillText('COMICS', (x(frac(8)) + x(1)) / 2, y + 36);
+    // Current wavelength
+    const mx = x(frac(l));
+    ctx.beginPath(); ctx.moveTo(mx, y - 2); ctx.lineTo(mx - 5, y - 11); ctx.lineTo(mx + 5, y - 11); ctx.closePath(); ctx.fill();
+
+    info.textContent = l < .75 ? 'Visible light: the dust cloud is cold and dark. It blocks everything behind it — and the young star inside.'
+      : l < 5 ? 'Near-infrared: longer waves slip through the dust, so the hidden star starts to shine through.'
+      : l < 8 ? 'The dust is beginning to glow by its own heat. Go a little further, into the COMICS range.'
+      : 'Mid-infrared: now the warm dust itself shines! Even the sky glows faintly, which is why COMICS is kept extremely cold.';
   }
 
-  btn.addEventListener('click', () => {
-    ir = !ir;
-    btn.textContent = ir ? 'Switch to Optical View' : 'Switch to Mid-IR View';
-    draw();
-    if (ir && !clicked) {
-      clicked = true;
-      _setStatus('✓ Warm dust detected in mid-infrared!', true);
-      setTimeout(_miniGamePassed, 1200);
+  slider.addEventListener('input', draw);
+  shot.addEventListener('click', () => {
+    if (done) return;
+    const l = wl();
+    if (l >= 8) {
+      done = true; slider.disabled = true;
+      _setStatus('✓ Warm dust detected! Dust near room temperature glows brightest around 10 µm.', true);
+      setTimeout(_miniGamePassed, 2200);
+    } else {
+      _setStatus(l < .75 ? 'In visible light there is only a dark cloud. Try longer wavelengths.'
+        : 'Closer — but the dust is not glowing yet. Slide into the COMICS range (8–25 µm).', false);
     }
   });
 
@@ -1643,371 +1822,436 @@ function _game_ciao() {
 }
 
 // ──────────────────────────────────────────────────────────
-// HiCIAO — Suppress star, click the faint companion
+// HiCIAO — is it a planet or a speckle?
+// Even with the star masked, small flaws in the optics leave
+// "speckles" that look exactly like planets. During a night the
+// sky slowly turns as seen by the telescope: a real planet turns
+// with the sky, the speckles stay fixed to the instrument.
+// Slide through the night and click the dot that moves.
 // ──────────────────────────────────────────────────────────
 function _game_hiciao() {
-  _setTeaches('HiCIAO achieves contrast ratios of 10⁻⁶ — click the faint companion once starlight is suppressed!');
+  _setTeaches('With the star hidden, HiCIAO still sees "speckles" — smudges of leftover starlight that look just like planets. The trick: over a night the sky slowly turns above the telescope. A real planet turns with the sky; speckles stay put. Subtract what stays put, and the planet remains.');
 
+  const W = 360, H = 232, CX = 180, CY = 112;
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="260" style="display:block;margin:auto;cursor:crosshair"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Click the faint point that remains after suppression</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;cursor:crosshair"></canvas>
+    <div class="mg-row" style="width:min(360px,100%);margin:8px auto 0">
+      <span class="mg-label" style="min-width:0">Time</span>
+      <input id="hic-time" class="mg-slider" type="range" min="0" max="100" value="0">
+    </div>
+    <div style="text-align:center;margin-top:4px;font-size:13px;color:var(--muted)">Slide through the night, then click the one dot that moves — the real planet.</div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
+  const slider = document.getElementById('hic-time');
 
-  const starX = 180, starY = 130;
-  let suppression = 0; // 0–1
-  let animId;
-  let done = false;
+  const PR = 74, A0 = -2.2, SWEEP = 1.1;                 // planet: radius, start angle, how far the sky turns
+  const speckles = [];
+  for (let i = 0; i < 9; i++) {
+    const inner = i % 2 === 0;                           // keep speckles off the planet's own track
+    speckles.push({ r: inner ? 34 + Math.random() * 22 : 92 + Math.random() * 14, a: i / 9 * Math.PI * 2 + Math.random() * .4 });
+  }
+  let found = false, fade = 0;
+  const planet = () => { const a = A0 + slider.value / 100 * SWEEP; return [CX + Math.cos(a) * PR, CY + Math.sin(a) * PR]; };
 
-  // Plant the companion at a fixed offset
-  const compX = starX + 55, compY = starY - 40, compR = 5;
-
-  // Auto-increase suppression slowly to let player see the companion emerge
-  function tick() {
-    suppression = Math.min(1, suppression + 0.004);
-    draw();
-    if (!done) animId = requestAnimationFrame(tick);
+  function dot(x, y, alpha) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 8);
+    g.addColorStop(0, `rgba(255,255,255,${alpha})`); g.addColorStop(.4, `rgba(255,235,210,${alpha * .55})`); g.addColorStop(1, 'rgba(255,230,200,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill();
   }
 
   function draw() {
-    ctx.clearRect(0,0,360,260);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,260);
-    for (let i=0;i<60;i++) {
-      ctx.fillStyle=`rgba(255,255,255,${0.1+((i*73)%10)*0.05})`;
-      ctx.fillRect((i*137)%360,(i*97)%260,1,1);
+    if (document.getElementById('mg-canvas') !== canvas) return;
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
+    const rest = 1 - fade;                                // leftover starlight (fades out once subtracted)
+
+    const halo = ctx.createRadialGradient(CX, CY, 12, CX, CY, 110);
+    halo.addColorStop(0, `rgba(255,240,220,${.4 * rest})`); halo.addColorStop(1, 'rgba(255,240,220,0)');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(CX, CY, 110, 0, Math.PI * 2); ctx.fill();
+    speckles.forEach(s => dot(CX + Math.cos(s.a) * s.r, CY + Math.sin(s.a) * s.r, .9 * rest));
+
+    if (found) {                                          // the path the planet took across the night
+      ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.setLineDash([3, 4]); ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(CX, CY, PR, A0, A0 + SWEEP); ctx.stroke(); ctx.setLineDash([]);
+    }
+    const p = planet(); dot(p[0], p[1], .9);
+    if (found) {
+      ctx.strokeStyle = '#5fe07a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(p[0], p[1], 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#5fe07a'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('planet', p[0], p[1] - 17);
     }
 
-    // Speckle halo (shrinks with suppression)
-    const haloR = 80 * (1 - suppression * 0.85);
-    if (haloR > 5) {
-      const hg = ctx.createRadialGradient(starX,starY,0,starX,starY,haloR);
-      hg.addColorStop(0,'rgba(255,220,100,0.7)');
-      hg.addColorStop(0.5,'rgba(255,220,100,0.2)');
-      hg.addColorStop(1,'rgba(255,220,100,0)');
-      ctx.beginPath(); ctx.arc(starX,starY,haloR,0,Math.PI*2);
-      ctx.fillStyle=hg; ctx.fill();
+    // The mask hiding the star
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(CX, CY, 15, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.stroke();
+
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`Time: ${(slider.value / 100 * 3).toFixed(1)} h into the night`, 8, 16);
+    if (found && fade >= 1) {
+      ctx.textAlign = 'center'; ctx.fillStyle = '#5fe07a';
+      ctx.fillText('Everything that stayed still was subtracted. Only the planet is left.', W / 2, H - 8);
     }
-
-    // Central star (dimmed)
-    ctx.beginPath(); ctx.arc(starX,starY,10,0,Math.PI*2);
-    ctx.fillStyle=`rgba(255,255,180,${1-suppression*0.7})`; ctx.fill();
-
-    // Companion (visible only after some suppression)
-    const compAlpha = Math.max(0, (suppression - 0.4) / 0.6);
-    if (compAlpha > 0) {
-      ctx.beginPath(); ctx.arc(compX,compY,compR,0,Math.PI*2);
-      ctx.fillStyle=`rgba(100,160,255,${compAlpha})`; ctx.fill();
-    }
-
-    // Suppression meter
-    ctx.fillStyle='#1a2530'; ctx.fillRect(10,245,340,8);
-    ctx.fillStyle='#44ee44'; ctx.fillRect(10,245,340*suppression,8);
+    if (found && fade < 1) { fade = Math.min(1, fade + .02); requestAnimationFrame(draw); }
   }
 
+  slider.addEventListener('input', draw);
   canvas.addEventListener('click', e => {
-    const r  = canvas.getBoundingClientRect();
-    const mx = e.clientX - r.left;
-    const my = e.clientY - r.top;
-    if (suppression < 0.5) {
-      _setStatus('Wait for suppression to increase first!', false);
-      return;
+    if (found) return;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    const p = planet();
+    if (Math.hypot(x - p[0], y - p[1]) < 14) {
+      found = true; canvas.style.cursor = 'default';
+      _setStatus('✓ That one moved with the sky — a real planet!', true);
+      requestAnimationFrame(draw);
+      setTimeout(_miniGamePassed, 2400);
+    } else if (speckles.some(s => Math.hypot(x - CX - Math.cos(s.a) * s.r, y - CY - Math.sin(s.a) * s.r) < 14)) {
+      _setStatus('That dot never moves — it is a speckle made inside the instrument. Slide the time and look for the one that travels.', false);
     }
-    if (Math.hypot(mx-compX, my-compY) < compR + 12) {
-      done = true;
-      cancelAnimationFrame(animId);
-      _setStatus('✓ Faint companion identified!', true);
-      setTimeout(_miniGamePassed, 800);
-    } else {
-      _setStatus('Nothing there — look for the faint blue point.', false);
-    }
-  });
-
-  animId = requestAnimationFrame(tick);
-}
-
-// ──────────────────────────────────────────────────────────
-// SCExAO — Adjust two sliders until speckles disappear
-// ──────────────────────────────────────────────────────────
-function _game_scexao() {
-  _setTeaches('SCExAO suppresses stellar speckles in a "dark hole." Adjust both controls until the speckles vanish from the target zone!');
-
-  const area = document.getElementById('mg-game-area');
-  area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="240" style="display:block;margin:auto"></canvas>
-    <div style="display:flex;gap:24px;justify-content:center;margin-top:8px">
-      <div><label style="color:var(--muted);font-size:12px">Phase</label><br>
-        <input type="range" id="ctrl1" min="0" max="100" value="20" style="width:120px"></div>
-      <div><label style="color:var(--muted);font-size:12px">Amplitude</label><br>
-        <input type="range" id="ctrl2" min="0" max="100" value="20" style="width:120px"></div>
-    </div>`;
-
-  const canvas = document.getElementById('mg-canvas');
-  const ctx    = canvas.getContext('2d');
-  const ctrl1  = document.getElementById('ctrl1');
-  const ctrl2  = document.getElementById('ctrl2');
-
-  // Target: ctrl1 ~65, ctrl2 ~70 (±15 tolerance)
-  const t1 = 65, t2 = 70, tol = 15;
-
-  const darkZoneX = 160, darkZoneY = 60, darkZoneW = 100, darkZoneH = 100;
-  let animId;
-  let passed = false;
-
-  // Pre-generate speckle seed positions
-  const speckles = Array.from({length:30},(_,i)=>({
-    ox: (i*137)%180 - 90,
-    oy: (i*97)%180 - 90,
-  }));
-
-  function draw() {
-    const v1 = parseInt(ctrl1.value);
-    const v2 = parseInt(ctrl2.value);
-    const err = Math.sqrt((v1-t1)**2 + (v2-t2)**2);
-    const suppression = Math.max(0, 1 - err / 60);
-
-    ctx.clearRect(0,0,360,240);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,240);
-
-    // Star (center of image)
-    ctx.beginPath(); ctx.arc(130,120,10,0,Math.PI*2);
-    ctx.fillStyle='#fffde0'; ctx.fill();
-
-    // Speckles around star — shrink in dark zone as suppression rises
-    speckles.forEach((sp,i) => {
-      const sx = 130 + sp.ox;
-      const sy = 120 + sp.oy;
-      // Check if in dark zone
-      const inZone = sx > darkZoneX && sx < darkZoneX+darkZoneW &&
-                     sy > darkZoneY && sy < darkZoneY+darkZoneH;
-      const alpha = inZone ? Math.max(0.05, 1-suppression) : 1;
-      const r     = 3 + ((i*31)%4);
-      const sg = ctx.createRadialGradient(sx,sy,0,sx,sy,r);
-      sg.addColorStop(0,`rgba(255,220,100,${alpha*0.8})`);
-      sg.addColorStop(1,'rgba(255,220,100,0)');
-      ctx.beginPath(); ctx.arc(sx,sy,r,0,Math.PI*2);
-      ctx.fillStyle=sg; ctx.fill();
-    });
-
-    // Dark zone border
-    ctx.strokeStyle = suppression > 0.85 ? '#44ee44' : 'rgba(126,207,237,0.4)';
-    ctx.lineWidth   = 1.5;
-    ctx.setLineDash([4,3]);
-    ctx.strokeRect(darkZoneX, darkZoneY, darkZoneW, darkZoneH);
-    ctx.setLineDash([]);
-    ctx.fillStyle='rgba(126,207,237,0.3)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-    ctx.fillText('Dark zone', darkZoneX+darkZoneW/2, darkZoneY-5);
-
-    // Planet hint (appears in dark zone at high suppression)
-    if (suppression > 0.7) {
-      const pa = (suppression - 0.7) / 0.3;
-      ctx.beginPath(); ctx.arc(darkZoneX+70, darkZoneY+60, 5, 0, Math.PI*2);
-      ctx.fillStyle=`rgba(80,180,255,${pa})`; ctx.fill();
-      if (pa > 0.8) {
-        ctx.fillStyle=`rgba(80,180,255,${pa})`; ctx.font='9px sans-serif'; ctx.textAlign='center';
-        ctx.fillText('Planet', darkZoneX+70, darkZoneY+50);
-      }
-    }
-
-    // Suppression bar
-    ctx.fillStyle='#1a2530'; ctx.fillRect(10,225,340,8);
-    ctx.fillStyle = suppression > 0.85 ? '#44ee44' : '#7ecfed';
-    ctx.fillRect(10,225,340*suppression,8);
-
-    if (!passed && suppression > 0.85) {
-      passed = true;
-      cancelAnimationFrame(animId);
-      _setStatus('✓ Dark hole created — planet visible!', true);
-      setTimeout(_miniGamePassed, 1000);
-      return;
-    }
-    _setStatus(`Speckle suppression: ${Math.round(suppression*100)}%`, false);
-    animId = requestAnimationFrame(draw);
-  }
-
-  ctrl1.addEventListener('input', () => { cancelAnimationFrame(animId); animId=requestAnimationFrame(draw); });
-  ctrl2.addEventListener('input', () => { cancelAnimationFrame(animId); animId=requestAnimationFrame(draw); });
-
-  animId = requestAnimationFrame(draw);
-}
-
-// ──────────────────────────────────────────────────────────
-// CHARIS — Swipe through wavelength layers of a data cube
-// ──────────────────────────────────────────────────────────
-function _game_charis() {
-  _setTeaches('CHARIS records a 3D data cube: an image at every wavelength. Swipe through the layers to explore how the planet looks at different colors!');
-
-  const area = document.getElementById('mg-game-area');
-  area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="220" style="display:block;margin:auto;cursor:ew-resize"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag left/right to scan through wavelength layers (visit all 6)</div>`;
-
-  const canvas = document.getElementById('mg-canvas');
-  const ctx    = canvas.getContext('2d');
-
-  const layers = [
-    { label:'J (1.2µm)', hue:220 },
-    { label:'H (1.6µm)', hue:180 },
-    { label:'K1(2.0µm)', hue:140 },
-    { label:'K2(2.2µm)', hue:60  },
-    { label:'K3(2.4µm)', hue:30  },
-    { label:'K4(2.5µm)', hue:0   },
-  ];
-
-  let layerIdx = 0;
-  let dragStartX = null, startIdx = 0;
-  let visited   = new Set([0]);
-  let passed    = false;
-
-  function draw() {
-    const lyr = layers[layerIdx];
-    ctx.clearRect(0,0,360,220);
-    ctx.fillStyle = `hsl(${lyr.hue},20%,4%)`;
-    ctx.fillRect(0,0,360,220);
-
-    // Stars
-    for (let i=0;i<30;i++) {
-      ctx.fillStyle=`rgba(255,255,255,0.3)`;
-      ctx.fillRect((i*137)%360,(i*97)%200,1,1);
-    }
-
-    // "Planet" — color shifts with wavelength
-    const pg = ctx.createRadialGradient(180,100,2,180,100,30);
-    pg.addColorStop(0,`hsl(${lyr.hue},80%,70%)`);
-    pg.addColorStop(1,`hsl(${lyr.hue},50%,10%)`);
-    ctx.beginPath(); ctx.arc(180,100,30,0,Math.PI*2);
-    ctx.fillStyle=pg; ctx.fill();
-
-    // Label
-    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.font='bold 12px sans-serif'; ctx.textAlign='center';
-    ctx.fillText(lyr.label, 180, 155);
-
-    // Layer indicator
-    layers.forEach((l,i) => {
-      const lx = 20 + i * 55;
-      ctx.fillStyle = i===layerIdx ? `hsl(${l.hue},70%,60%)` :
-                      visited.has(i) ? 'rgba(255,255,255,0.3)' : '#1a2530';
-      ctx.fillRect(lx, 190, 46, 10);
-    });
-
-    const left = layers.length - visited.size;
-    if (!passed) {
-      _setStatus(left > 0 ? `${left} layer${left>1?'s':''} not yet visited` : 'All layers visited!', left===0);
-    }
-  }
-
-  canvas.addEventListener('mousedown',  e => { const r=canvas.getBoundingClientRect(); dragStartX=e.clientX-r.left; startIdx=layerIdx; });
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); const r=canvas.getBoundingClientRect(); dragStartX=e.touches[0].clientX-r.left; startIdx=layerIdx; },{passive:false});
-  window.addEventListener('mousemove',  e => {
-    if(dragStartX===null)return;
-    const r=canvas.getBoundingClientRect();
-    const dx=(e.clientX-r.left)-dragStartX;
-    const idx=Math.min(layers.length-1, Math.max(0, startIdx - Math.round(dx/50)));
-    if(idx!==layerIdx){layerIdx=idx; visited.add(idx); draw();}
-  });
-  window.addEventListener('touchmove',  e => {
-    if(dragStartX===null)return; e.preventDefault();
-    const r=canvas.getBoundingClientRect();
-    const dx=(e.touches[0].clientX-r.left)-dragStartX;
-    const idx=Math.min(layers.length-1,Math.max(0,startIdx-Math.round(dx/50)));
-    if(idx!==layerIdx){layerIdx=idx; visited.add(idx); draw();}
-  },{passive:false});
-  window.addEventListener('mouseup',  () => {
-    dragStartX=null;
-    if(visited.size>=layers.length && !passed){passed=true;_setStatus('✓ Full wavelength cube explored!',true);setTimeout(_miniGamePassed,800);}
-  });
-  window.addEventListener('touchend', () => {
-    dragStartX=null;
-    if(visited.size>=layers.length && !passed){passed=true;_setStatus('✓ Full wavelength cube explored!',true);setTimeout(_miniGamePassed,800);}
   });
 
   draw();
 }
 
 // ──────────────────────────────────────────────────────────
-// VAMPIRES — Rotate polarizer until dust ring brightens
+// SCExAO — three stages, one after another
+// Switch each stage on or off and watch what it does to the star:
+//   first AO stage (AO188 / AO3K)  → blob becomes a sharp star
+//   SCExAO extreme AO              → the flickering speckles calm down
+//   coronagraph                    → the star itself is blocked
+// Only with all three is the sky dark enough to see the planet.
 // ──────────────────────────────────────────────────────────
-function _game_vampires() {
-  _setTeaches('VAMPIRES uses polarimetry to reveal scattered light from dust rings. Rotate the polarizer until the ring becomes bright!');
+function _game_scexao() {
+  _setTeaches('SCExAO works as the last link of a chain. Subaru\'s first adaptive optics sharpens the star, SCExAO\'s 2,000-actuator mirror then removes what is left of the blur, and a coronagraph finally blocks the star. Switch the stages on and off to see what each one does.');
 
+  const W = 360, H = 216, CX = 180, CY = 104, PX = 228, PY = 78;
+  const STAGES = [['ao', 'First AO'], ['ex', 'SCExAO extreme AO'], ['co', 'Coronagraph']];
   const area = document.getElementById('mg-game-area');
   area.innerHTML = `
-    <canvas id="mg-canvas" width="360" height="240" style="display:block;margin:auto;cursor:ew-resize"></canvas>
-    <div style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted)">Drag left/right to rotate the polarizer angle</div>`;
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px">
+      ${STAGES.map(s => `<button class="mg-btn outline" id="sx-${s[0]}" style="padding:7px 12px">${s[1]}: OFF</button>`).join('')}
+    </div>
+    <div id="sx-hint" style="text-align:center;margin-top:6px;font-size:13px;color:var(--muted);min-height:2.6em"></div>`;
 
   const canvas = document.getElementById('mg-canvas');
   const ctx    = canvas.getContext('2d');
+  const hint   = document.getElementById('sx-hint');
+  const on = { ao: false, ex: false, co: false };
+  let done = false, frameNo = 0, boil = [];
+  const still = []; for (let i = 0; i < 6; i++) still.push([30 + Math.random() * 55, Math.random() * Math.PI * 2]);
 
-  let angle      = 0;  // degrees
-  let dragStartX = null, startAngle = 0;
-  let passed     = false;
-  let animId;
-  // Optimal angle: ~65° (scattered light is polarized at a specific angle)
-  const optimal  = 65;
+  function soft(x, y, r, a) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, `rgba(255,250,240,${a})`); g.addColorStop(1, 'rgba(255,245,230,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  }
+  const message = () => {
+    const q = on.ao ? (on.ex ? 2 : 1) : 0;
+    if (q === 2 && on.co) return 'Sharp star + calm speckles + mask: the sky beside the star is finally dark. Click the planet!';
+    if (!on.ao && on.ex)  return 'SCExAO needs light the first AO stage has already tidied up — alone it cannot keep up with the air.';
+    if (!on.ao && on.co)  return 'The mask is tiny. A blurry star simply spills out all around it.';
+    if (q === 1 && on.co) return 'The star\'s core is hidden, but the flickering speckles left around it still look just like planets.';
+    if (q === 2)          return 'Extreme AO: the speckles calm down and the star is nearly perfect — but it is still far too bright.';
+    if (q === 1)          return 'First AO on: the blob shrinks to a sharp star, but a halo of flickering speckles remains.';
+    return 'Telescope only: the air smears the star into a boiling blob. Switch the stages on.';
+  };
 
-  function ringBrightness() {
-    const diff = Math.abs(((angle - optimal) % 180 + 180) % 180);
-    return Math.max(0, 1 - diff / 50);
+  function draw() {
+    if (document.getElementById('mg-canvas') !== canvas) return;
+    const q = on.ao ? (on.ex ? 2 : 1) : 0, dark = q === 2 && on.co;
+    if (frameNo % 5 === 0) {                              // the air changes all the time
+      boil = [];
+      const n = q === 0 ? 30 : 14;
+      for (let i = 0; i < n; i++) {
+        const r = q === 0 ? Math.random() * 55 : 20 + Math.random() * 62, a = Math.random() * Math.PI * 2;
+        boil.push([CX + Math.cos(a) * r, CY + Math.sin(a) * r]);
+      }
+    }
+    frameNo++;
+
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
+    soft(PX, PY, 6, .95);                                  // the planet is always there…
+    ctx.globalCompositeOperation = 'lighter';             // …the starlight is what hides it
+    if (q === 0) {
+      boil.forEach(b => soft(b[0], b[1], 17, .3));
+    } else {
+      soft(CX, CY, 84, (q === 1 ? .42 : .14) * (on.co ? .55 : 1));          // halo
+      if (q === 1) boil.forEach(b => soft(b[0], b[1], 6, .8));
+      else still.forEach(s => soft(CX + Math.cos(s[1]) * s[0], CY + Math.sin(s[1]) * s[0], 5, on.co ? .1 : .3));
+      if (!on.co) {
+        soft(CX, CY, 46, .9); soft(CX, CY, 14, 1);
+        if (q === 2) { ctx.strokeStyle = 'rgba(255,250,240,.35)'; ctx.lineWidth = 1.5; [22, 31].forEach(r => { ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke(); }); }
+      }
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    if (on.co) {
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(CX, CY, 15, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (done) {
+      ctx.strokeStyle = '#5fe07a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(PX, PY, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#5fe07a'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('planet', PX, PY - 17);
+    }
+    canvas.style.cursor = dark && !done ? 'crosshair' : 'default';
+    requestAnimationFrame(draw);
+  }
+
+  STAGES.forEach(s => {
+    const b = document.getElementById('sx-' + s[0]);
+    b.addEventListener('click', () => {
+      if (done) return;
+      on[s[0]] = !on[s[0]];
+      b.textContent = `${s[1]}: ${on[s[0]] ? 'ON' : 'OFF'}`;
+      b.classList.toggle('outline', !on[s[0]]);
+      hint.textContent = message();
+    });
+  });
+  canvas.addEventListener('click', e => {
+    if (done || !(on.ao && on.ex && on.co)) return;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    if (Math.hypot(x - PX, y - PY) < 16) {
+      done = true;
+      _setStatus('✓ Planet found — it took all three stages working together.', true);
+      setTimeout(_miniGamePassed, 1600);
+    } else {
+      _setStatus('Look for the small steady point of light beside the mask.', false);
+    }
+  });
+
+  hint.textContent = message();
+  requestAnimationFrame(draw);
+}
+
+// ──────────────────────────────────────────────────────────
+// CHARIS — a picture at every wavelength, and so a spectrum
+// 1. Slide through the wavelengths. Speckles of starlight slide
+//    outward as the wavelength grows; the planet stays where it
+//    is. Click the planet.
+// 2. Visit every wavelength: CHARIS measures the planet's
+//    brightness in each one, building up its spectrum. The dips
+//    are gases in the planet's atmosphere.
+// ──────────────────────────────────────────────────────────
+function _game_charis() {
+  _setTeaches('CHARIS takes a picture at many infrared wavelengths at once. Speckles of starlight sit further out at longer wavelengths, but a planet stays in the same place — and its brightness in each picture adds up to a spectrum that shows what its atmosphere is made of.');
+
+  const W = 360, H = 222, CX = 104, CY = 112;
+  // Wavelength (µm) and the planet's brightness there (simplified: dips where gases absorb)
+  const SLICES = [[1.15, .62], [1.33, .88], [1.50, .40], [1.68, .78], [1.86, .42], [2.04, .84], [2.22, .46], [2.40, .58]];
+  const DIPS = { 2: 'water', 4: 'water', 6: 'methane' };
+  const area = document.getElementById('mg-game-area');
+  area.innerHTML = `
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto;cursor:crosshair"></canvas>
+    <div class="mg-row" style="width:min(360px,100%);margin:8px auto 0">
+      <span class="mg-label" style="min-width:0">Wavelength</span>
+      <input id="charis-wl" class="mg-slider" type="range" min="0" max="${SLICES.length - 1}" value="0">
+    </div>
+    <div id="charis-hint" style="text-align:center;margin-top:4px;font-size:13px;color:var(--muted);min-height:2.6em">Slide through the wavelengths. The speckles slide in and out — click the one dot that stays in place: the planet.</div>`;
+
+  const canvas = document.getElementById('mg-canvas');
+  const ctx    = canvas.getContext('2d');
+  const slider = document.getElementById('charis-wl');
+  const hint   = document.getElementById('charis-hint');
+
+  const PL = [CX + Math.cos(-0.6) * 62, CY + Math.sin(-0.6) * 62];
+  const speckles = []; for (let i = 0; i < 10; i++) speckles.push([19 + Math.random() * 24, i / 10 * Math.PI * 2 + Math.random() * .4]);
+  const measured = new Array(SLICES.length).fill(false);
+  let stage = 'find', done = false;
+  const idx = () => +slider.value;
+  const speckleAt = (s, i) => { const r = s[0] * SLICES[i][0] / SLICES[0][0]; return [CX + Math.cos(s[1]) * r, CY + Math.sin(s[1]) * r]; };
+
+  function dot(x, y, a) {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 7);
+    g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.45, `rgba(255,235,215,${a * .5})`); g.addColorStop(1, 'rgba(255,230,210,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill();
   }
 
   function draw() {
-    const bright = ringBrightness();
-    ctx.clearRect(0,0,360,240);
-    ctx.fillStyle='#040810'; ctx.fillRect(0,0,360,240);
-    for(let i=0;i<40;i++){ctx.fillStyle=`rgba(255,255,255,${0.1+((i*73)%10)*0.05})`;ctx.fillRect((i*137)%360,(i*97)%240,1,1);}
+    const i = idx();
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
 
-    // Dust ring
-    const rg = ctx.createRadialGradient(180,110,25,180,110,70);
-    rg.addColorStop(0,'rgba(200,160,100,0)');
-    rg.addColorStop(0.5,`rgba(200,160,100,${bright*0.9})`);
-    rg.addColorStop(1,'rgba(200,160,100,0)');
-    ctx.beginPath(); ctx.arc(180,110,70,0,Math.PI*2);
-    ctx.fillStyle=rg; ctx.fill();
-
-    // Central star
-    ctx.beginPath(); ctx.arc(180,110,12,0,Math.PI*2); ctx.fillStyle='#fffde0'; ctx.fill();
-
-    // Polarizer dial
-    const dialX=295, dialY=110, dialR=35;
-    ctx.beginPath(); ctx.arc(dialX,dialY,dialR,0,Math.PI*2);
-    ctx.strokeStyle='#7ecfed'; ctx.lineWidth=2; ctx.stroke();
-    ctx.fillStyle='rgba(26,37,48,0.8)'; ctx.fill();
-    // Pointer
-    const rad = angle * Math.PI/180;
-    ctx.beginPath();
-    ctx.moveTo(dialX,dialY);
-    ctx.lineTo(dialX + Math.cos(rad)*dialR*0.9, dialY + Math.sin(rad)*dialR*0.9);
-    ctx.strokeStyle='#ff8040'; ctx.lineWidth=3; ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px sans-serif'; ctx.textAlign='center';
-    ctx.fillText(`${Math.round(angle % 360)}°`, dialX, dialY+dialR+14);
-    ctx.fillText('Polarizer', dialX, dialY-dialR-5);
-
-    // Brightness meter
-    ctx.fillStyle='#1a2530'; ctx.fillRect(10,225,220,8);
-    ctx.fillStyle=bright>0.85?'#44ee44':'#ff8040';
-    ctx.fillRect(10,225,220*bright,8);
-    ctx.fillStyle='rgba(255,255,255,0.4)'; ctx.font='9px sans-serif'; ctx.textAlign='left';
-    ctx.fillText(`Signal: ${Math.round(bright*100)}%`, 10,220);
-
-    if (!passed && bright > 0.85) {
-      passed=true; cancelAnimationFrame(animId);
-      _setStatus('✓ Polarized dust ring detected!',true);
-      setTimeout(_miniGamePassed,1000);
-      return;
+    // ── The picture at this wavelength ──
+    ctx.fillStyle = '#000'; ctx.fillRect(4, 12, 200, 200);
+    ctx.strokeStyle = 'rgba(255,255,255,.3)'; ctx.lineWidth = 1; ctx.strokeRect(4.5, 12.5, 199, 199);
+    ctx.save(); ctx.beginPath(); ctx.rect(4, 12, 200, 200); ctx.clip();
+    speckles.forEach(s => { const p = speckleAt(s, i); dot(p[0], p[1], .8); });
+    dot(PL[0], PL[1], .35 + .65 * SLICES[i][1]);
+    ctx.restore();
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(CX, CY, 12, 0, Math.PI * 2); ctx.fill();         // masked star
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.stroke();
+    if (stage !== 'find') {
+      ctx.strokeStyle = '#5fe07a'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(PL[0], PL[1], 11, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = '#5fe07a'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('planet', PL[0], PL[1] - 15);
     }
-    animId = requestAnimationFrame(draw);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(`${SLICES[i][0].toFixed(2)} µm`, 10, 27);
+
+    // ── The planet's spectrum, filled in as wavelengths are visited ──
+    const GX = 222, GY = 40, GW = 130, GH = 130, n = SLICES.length;
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText('The planet\'s spectrum', GX, 26);
+    ctx.strokeStyle = 'rgba(255,255,255,.4)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(GX + .5, GY); ctx.lineTo(GX + .5, GY + GH + .5); ctx.lineTo(GX + GW, GY + GH + .5); ctx.stroke();
+    const px = k => GX + 10 + k * (GW - 20) / (n - 1), py = k => GY + GH - SLICES[k][1] * (GH - 14);
+    ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(px(i) - 6, GY, 12, GH);                     // current wavelength
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.beginPath();
+    let pen = false;
+    for (let k = 0; k < n; k++) { if (!measured[k]) { pen = false; continue; } pen ? ctx.lineTo(px(k), py(k)) : ctx.moveTo(px(k), py(k)); pen = true; }
+    ctx.stroke();
+    for (let k = 0; k < n; k++) if (measured[k]) { ctx.fillStyle = '#ffb060'; ctx.beginPath(); ctx.arc(px(k), py(k), 3.5, 0, Math.PI * 2); ctx.fill(); }
+    ctx.fillStyle = 'rgba(255,255,255,.55)'; ctx.font = '8px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('1.15 µm', px(0) + 6, GY + GH + 12); ctx.fillText('2.40 µm', px(n - 1) - 6, GY + GH + 12);
+    ctx.save(); ctx.translate(GX - 6, GY + GH / 2); ctx.rotate(-Math.PI / 2); ctx.fillText('brightness', 0, 0); ctx.restore();
+    if (done) {
+      ctx.fillStyle = '#5fe07a'; ctx.font = 'bold 8px sans-serif';
+      Object.keys(DIPS).forEach(k => ctx.fillText(DIPS[k], px(+k), py(+k) + 13));
+    } else if (stage === 'measure') {
+      ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '9px sans-serif';
+      ctx.fillText(`${measured.filter(Boolean).length} of ${n} wavelengths measured`, GX + GW / 2, GY + GH + 28);
+    }
   }
 
-  canvas.addEventListener('mousedown',  e => { const r=canvas.getBoundingClientRect(); dragStartX=e.clientX-r.left; startAngle=angle; });
-  canvas.addEventListener('touchstart', e => { e.preventDefault(); const r=canvas.getBoundingClientRect(); dragStartX=e.touches[0].clientX-r.left; startAngle=angle; },{passive:false});
-  window.addEventListener('mousemove',  e => { if(dragStartX===null)return; const r=canvas.getBoundingClientRect(); angle=startAngle+(e.clientX-r.left-dragStartX)*1.5; });
-  window.addEventListener('touchmove',  e => { if(dragStartX===null)return; e.preventDefault(); const r=canvas.getBoundingClientRect(); angle=startAngle+(e.touches[0].clientX-r.left-dragStartX)*1.5; },{passive:false});
-  window.addEventListener('mouseup',  ()=>{ dragStartX=null; });
-  window.addEventListener('touchend', ()=>{ dragStartX=null; });
+  function visit() {
+    if (stage === 'measure') {
+      measured[idx()] = true;
+      if (measured.every(Boolean)) {
+        stage = 'done'; done = true; slider.disabled = true;
+        hint.textContent = 'The dips are colours swallowed by gases in the planet\'s atmosphere — here water vapour and methane.';
+        _setStatus('✓ Spectrum complete — the planet\'s atmosphere can be read from it.', true);
+        setTimeout(_miniGamePassed, 2400);
+      }
+    }
+    draw();
+  }
+  slider.addEventListener('input', visit);
+  canvas.addEventListener('click', e => {
+    if (stage !== 'find') return;
+    const r = canvas.getBoundingClientRect();
+    const x = (e.clientX - r.left) * W / r.width, y = (e.clientY - r.top) * H / r.height;
+    if (Math.hypot(x - PL[0], y - PL[1]) < 13) {
+      stage = 'measure'; canvas.style.cursor = 'default';
+      hint.textContent = 'Found it. Now visit every wavelength — CHARIS measures the planet\'s brightness in each one.';
+      _setStatus('Planet found. Now build its spectrum.', false);
+      visit();
+    } else if (speckles.some(s => { const p = speckleAt(s, idx()); return Math.hypot(x - p[0], y - p[1]) < 13; })) {
+      _setStatus('That dot slides outward as the wavelength grows — it is a speckle of starlight, not a planet.', false);
+    }
+  });
 
-  animId = requestAnimationFrame(draw);
+  draw();
 }
+
+// ──────────────────────────────────────────────────────────
+// VAMPIRES — subtract two pictures to remove the star
+// Camera A and camera B photograph the same star through
+// polarizing filters turned 90° apart.
+//   • The star's own light is the same in both pictures.
+//   • Light bounced off the dust ring is polarized, so the ring
+//     is bright in different places in A and in B.
+// Drag the slider to subtract B from A: whatever is the same
+// (the star) disappears, whatever differs (the dust) is left.
+// ──────────────────────────────────────────────────────────
+function _game_vampires() {
+  _setTeaches('A dust ring is hidden in the glare of its star. VAMPIRES takes two pictures at once through polarizing filters turned 90° apart. The star looks the same in both. The dust does not. Take one picture away from the other and the star cancels itself out.');
+
+  const W = 360, H = 250, P = 112, R = 34, BINS = 36;
+  const area = document.getElementById('mg-game-area');
+  area.innerHTML = `
+    <canvas id="mg-canvas" width="${W}" height="${H}" style="display:block;margin:auto"></canvas>
+    <div class="mg-row" style="width:min(360px,100%);margin:8px auto 0">
+      <span class="mg-label" style="min-width:0">Subtract B from A</span>
+      <input id="vamp-sub" class="mg-slider" type="range" min="0" max="100" value="0">
+    </div>
+    <div id="vamp-hint" style="text-align:center;margin-top:4px;font-size:13px;color:var(--muted);min-height:2.6em">Look closely: the star is identical in A and B, but the faint ring is brighter left-and-right in A and top-and-bottom in B. Drag the slider to subtract.</div>`;
+
+  const canvas = document.getElementById('mg-canvas');
+  const ctx    = canvas.getContext('2d');
+  const slider = document.getElementById('vamp-sub');
+  const hint   = document.getElementById('vamp-hint');
+  let done = false, fill = 0;                               // fill: 0→1, the second (45°) pair completing the ring
+  const AX = 30, BX = 218, TY = 22, RX = 124, RY = 132;     // panel positions (result panel is larger)
+  const RS = 112;
+
+  // +1 where the ring is bright only in A (left/right), −1 where only in B (top/bottom)
+  const pol = i => Math.cos(2 * (i / BINS * Math.PI * 2));
+  function ring(cx, cy, i, style) {
+    ctx.beginPath(); ctx.arc(cx, cy, R, (i - .55) / BINS * Math.PI * 2, (i + .55) / BINS * Math.PI * 2);
+    ctx.strokeStyle = style; ctx.lineWidth = 9; ctx.stroke();
+  }
+  function glare(cx, cy, a) {
+    if (a <= 0) return;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, 54);
+    g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(.3, `rgba(255,255,255,${.9 * a})`); g.addColorStop(.75, `rgba(255,250,235,${.5 * a})`); g.addColorStop(1, 'rgba(255,250,235,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 54, 0, Math.PI * 2); ctx.fill();
+  }
+  function frame(x, y, title) {
+    ctx.fillStyle = '#000'; ctx.fillRect(x, y, P, P);
+    ctx.strokeStyle = 'rgba(255,255,255,.35)'; ctx.lineWidth = 1; ctx.strokeRect(x + .5, y + .5, P - 1, P - 1);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'; ctx.fillText(title, x + P / 2, y - 6);
+  }
+  function camera(x, sign, title) {
+    frame(x, TY, title);
+    const cx = x + P / 2, cy = TY + P / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(x, TY, P, P); ctx.clip();
+    for (let i = 0; i < BINS; i++) ring(cx, cy, i, `rgba(255,205,140,${.5 + .5 * sign * pol(i)})`);
+    glare(cx, cy, .8);                                      // the star swamps the ring but does not quite hide it
+    ctx.restore();
+  }
+
+  function draw() {
+    if (document.getElementById('mg-canvas') !== canvas) return;
+    const s = slider.value / 100;
+    ctx.fillStyle = '#040810'; ctx.fillRect(0, 0, W, H);
+
+    camera(AX, 1, 'Camera A');
+    camera(BX, -1, 'Camera B');
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('−', W / 2, TY + P / 2 + 7);
+    ctx.fillStyle = 'rgba(255,255,255,.6)'; ctx.font = '9px sans-serif';
+    ctx.fillText('same star', W / 2, TY + P / 2 + 26); ctx.fillText('different ring', W / 2, TY + P / 2 + 38);
+
+    // Result: A − B
+    frame(RX, RY, '');
+    const cx = RX + RS / 2, cy = RY + RS / 2;
+    ctx.save(); ctx.beginPath(); ctx.rect(RX, RY, RS, RS); ctx.clip();
+    for (let i = 0; i < BINS; i++) {
+      const p = pol(i), base = .5 + .5 * p;                 // what camera A alone shows
+      // sliding from "A" to "A − B": parts equal in both fade, differing parts stay
+      const a = base * (1 - s) + Math.abs(p) * s;
+      ring(cx, cy, i, `rgba(255,205,140,${Math.max(a, fill * .9)})`);
+    }
+    glare(cx, cy, .8 * (1 - s));
+    ctx.restore();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(s < 1 ? 'Result: A − B' : 'Result: only the dust', RX + RS + 8, RY + 16);
+    ctx.fillStyle = 'rgba(255,255,255,.7)'; ctx.font = '9px sans-serif';
+    ctx.fillText(`Star left: ${Math.round((1 - s) * 100)}%`, RX + RS + 8, RY + 34);
+    if (s >= 1) {
+      ctx.fillText('Repeating with the', RX + RS + 8, RY + 56);
+      ctx.fillText('filters turned 45°', RX + RS + 8, RY + 68);
+      ctx.fillText('fills in the gaps.', RX + RS + 8, RY + 80);
+    }
+    ctx.textAlign = 'right';
+    ctx.fillText('the star is the', RX - 8, RY + 34); ctx.fillText('same in A and B,', RX - 8, RY + 46); ctx.fillText('so it cancels', RX - 8, RY + 58);
+
+    if (done && fill < 1) { fill = Math.min(1, fill + .012); requestAnimationFrame(draw); }
+  }
+
+  slider.addEventListener('input', () => {
+    if (!done && +slider.value >= 100) {
+      done = true; slider.disabled = true;
+      hint.textContent = 'The star is gone: it was the same in both pictures. What is left is light that was polarized — light bounced off dust.';
+      _setStatus('✓ Star removed — the dust ring is revealed!', true);
+      requestAnimationFrame(draw);
+      setTimeout(_miniGamePassed, 2600);
+    }
+    draw();
+  });
+
+  draw();
+}
+
 // ──────────────────────────────────────────────────────────
 // PREVIEW: open mini-games directly, without finding a target.
 //   index.html?mg=fmos          → just the FMOS game
