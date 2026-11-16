@@ -8,15 +8,15 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg:     #040810;
-  --panel:  #0d1f38;
-  --border: #1e3a5c;
-  --accent: #7ecfed;    /* light blue — visible on dark */
-  --text:   #e8f2ff;    /* bright white-blue for headings */
-  --muted:  #a8c8e8;    /* softer blue for body text */
-  --dim:    #5a8aaa;
-  --green:  #5ec47a;
-  --gold:   #f0c060;
+  /* Palette taken from the background photo: neutral night sky, the warm
+     grey-white of the dome, and the gold of the Milky Way's core. */
+  --bg:     #07070b;
+  --border: rgba(255, 255, 255, 0.16);
+  --accent: #e6c88f;    /* Milky Way gold */
+  --text:   #f4f1ea;    /* warm starlight white */
+  --muted:  #cfcabf;    /* dome grey */
+  --dim:    #9a958c;
+  --gold:   #e6c88f;
 }
 
 body {
@@ -26,13 +26,21 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Times New Roman', Times, serif;
-  /* Background image — replace assets/bg.jpg with your image file */
+  /* Background image — replace assets/bg.jpg with your image file.
+     Anchored bottom-left so the dome stays in view on any window shape. */
   background-image: url('assets/bg.jpg');
   background-size: cover;
-  background-position: center;
+  background-position: left bottom;
   background-attachment: fixed;
 }
-
+/* Soft darkening at the top (behind the title) and the bottom (behind the
+   footer); the middle of the photo is left untouched. */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background: linear-gradient(180deg, rgba(7,7,11,.55) 0%, rgba(7,7,11,0) 34%, rgba(7,7,11,0) 72%, rgba(7,7,11,.6) 100%);
+  pointer-events: none;
+}
 
 nav, main, footer { position: relative; z-index: 1; }
 
@@ -40,13 +48,37 @@ nav, main, footer { position: relative; z-index: 1; }
 nav {
   display: flex;
   align-items: center;
-  padding: 14px 32px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.90);
-  backdrop-filter: blur(6px);
+  padding: 16px 36px;
 }
 .logo {
-  color: #111827;
+  color: var(--text);
+  font-size: 14px;
+  letter-spacing: .32em;
+  text-transform: uppercase;
+  text-shadow: 0 1px 6px #000;
+}
+
+/* White "atmosphere" behind the header and footer: the same haze as the
+   cards, fading out toward the page so the bars have no hard inner edge. */
+nav, footer { isolation: isolate; }
+nav::before, footer::before {
+  content: '';
+  position: absolute; left: 0; right: 0;
+  z-index: -1;
+  background: rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  pointer-events: none;
+}
+nav::before {
+  top: 0; bottom: -22px;
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent);
+          mask-image: linear-gradient(to bottom, #000 55%, transparent);
+}
+footer::before {
+  bottom: 0; top: -22px;
+  -webkit-mask-image: linear-gradient(to top, #000 55%, transparent);
+          mask-image: linear-gradient(to top, #000 55%, transparent);
 }
 
 /* ── HERO ── */
@@ -56,49 +88,58 @@ main {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 24px 40px;
-  gap: 24px;
+  padding: 36px 24px 40px;
+  gap: 22px;
   text-align: center;
 }
 
 .hero-tag {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: .20em;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--accent);
+  letter-spacing: .34em;
   text-transform: uppercase;
+  text-shadow: 0 1px 6px #000;
 }
 
 .hero-title {
-  font-size: clamp(32px, 5vw, 60px);
-  font-weight: 700;
+  font-size: clamp(32px, 5vw, 58px);
+  font-weight: 400;
   color: var(--text);
-  line-height: 1.15;
-  max-width: 700px;
+  line-height: 1.18;
+  letter-spacing: .01em;
+  max-width: 760px;
+  text-shadow: 0 2px 18px rgba(0,0,0,.9);
 }
 
 .hero-sub {
   font-size: 17px;
+  font-style: italic;
   color: var(--muted);
   max-width: 520px;
   line-height: 1.8;
   font-weight: 400;
+  text-shadow: 0 1px 8px #000;
 }
 
-/* ── SECTION LABEL ── */
+/* ── SECTION LABEL — small caps with a hairline trailing off into the sky ── */
 .section-label {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: .12em;
-  color: var(--muted);
+  display: flex; align-items: center; gap: 14px;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: .3em;
+  color: var(--text);
   text-transform: uppercase;
-  border-left: 3px solid var(--accent);
-  padding-left: 10px;
   text-align: left;
+  text-shadow: 0 1px 6px #000;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, rgba(255,255,255,.4), rgba(255,255,255,0));
 }
 .section-label small {
-  font-weight: 400; letter-spacing: .04em; text-transform: none;
-  opacity: .8; margin-left: 8px; font-size: 12px;
+  letter-spacing: .08em; text-transform: none; font-style: italic;
+  color: var(--muted); font-size: 12px;
 }
 
 /* ── ROWS — no panel behind them: the cards float directly on the background ── */
@@ -218,15 +259,15 @@ main {
 .inst-opt {
   display: block; width: 138px; text-align: center; white-space: nowrap;
   padding: 9px 10px; border-radius: 450px;
-  border: 0.5px solid rgba(255,255,255,0.075);
-  background: rgba(255,255,255,0.075);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(6px);
+  border: none;
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--text); text-decoration: none;
   font-size: 14px; font-weight: 700;
   transition: background .2s;
 }
-.inst-opt:hover, .inst-opt:focus-visible { background: rgba(126,207,237,.45); outline: none; }
+.inst-opt:hover, .inst-opt:focus-visible { background: rgba(255,255,255,.34); outline: none; }
 
 /* ── GAME CARD (rows 2 and 3) ── */
 .game-card {
@@ -261,16 +302,17 @@ main {
   margin-top: 4px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--green);
+  color: var(--accent);
+  letter-spacing: .08em;
 }
 
 /* ── FOOTER ── */
 footer {
-  padding: 14px 32px;
-  background: rgba(255,255,255,0.88);
-  border-top: 1px solid var(--border);
+  padding: 16px 36px;
   font-size: 12px;
-  color: var(--dim);
+  letter-spacing: .06em;
+  color: var(--muted);
+  text-shadow: 0 1px 6px #000;
   display: flex;
   justify-content: space-between;
   flex-wrap: wrap;
