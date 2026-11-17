@@ -33,11 +33,11 @@ function renderInstrumentCarousel() {
            onclick="onInstrumentClick('${id}', event)"
            onmouseenter="showInstrTooltip('${id}', event)"
            onmouseleave="hideTooltip()">
-        <div class="instr-card-color" style="background:${instr.color}"></div>
         <div class="instr-card-name">${instr.name}</div>
         <div class="instr-card-role">${instr.shortRole}</div>
         <div class="instr-card-port">${instr.port}</div>
         <div class="instr-card-year">${instr.year}</div>
+        <button class="instr-card-detail" type="button" onclick="showInstrDetail('${id}', event)">Detail</button>
       </div>`;
   });
 
@@ -272,6 +272,45 @@ function showInstrTooltip(id, e) {
   tt.style.display = 'block';
   _positionTooltip(tt, e);
 }
+
+// ── Detail window ──────────────────────────────────────────
+// The same information as the hover tooltip, for screens where hovering is
+// not practical. Opened by the "Detail" button on a card, which uh.css only
+// shows below large-laptop width or on touch screens.
+function showInstrDetail(id, e) {
+  if (e) e.stopPropagation();            // do not also select / deselect the card
+  const instr = UH_INSTRUMENTS[id];
+  if (!instr) return;
+  hideTooltip();
+  closeInstrDetail();
+
+  const err = G.selectedInstruments.includes(id) ? null : canSelectInstrument(id);
+  // Photo of the instrument: assets/instruments/<id>.jpg unless listed here.
+  // If the file is missing the picture simply is not shown.
+  const PHOTO = { focas: 'focus.jpg', pfs: 'pfs.png' };
+  const photo = '../../assets/instruments/' + (PHOTO[id] || id + '.jpg');
+  document.body.insertAdjacentHTML('beforeend', `
+    <div class="reward-overlay" id="instr-detail" onclick="if (event.target === this) closeInstrDetail()">
+      <div class="reward-box" style="text-align:left">
+        <button class="details-close" onclick="closeInstrDetail()" title="Close">✕</button>
+        <div class="reward-title" style="font-size:1.4em;color:var(--text)">${instr.name}</div>
+        <div style="font-size:0.867em;font-weight:600;color:var(--gold)">${instr.shortRole}</div>
+        <img class="reward-image" src="${photo}" alt="Photo of ${instr.name}" onerror="this.remove()">
+        <div class="reward-msg" style="color:var(--text)">${instr.description}</div>
+        <div class="details-meta">
+          <span><b>Port:</b> ${instr.port}</span>
+          <span><b>Since:</b> ${instr.year}</span>
+        </div>
+        ${err ? `<div style="font-size:0.867em;font-weight:700;color:var(--danger)">⚠ ${err}</div>` : ''}
+        <div class="reward-btns"><button class="reward-btn primary" onclick="closeInstrDetail()">Close</button></div>
+      </div>
+    </div>`);
+}
+function closeInstrDetail() {
+  const el = document.getElementById('instr-detail');
+  if (el) el.remove();
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeInstrDetail(); });
 
 function hideTooltip() {
   const tt = document.getElementById('uh-tooltip');

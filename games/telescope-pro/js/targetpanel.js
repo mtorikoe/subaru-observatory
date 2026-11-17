@@ -7,7 +7,7 @@ function renderTargetPanel() {
   const panel = document.getElementById('target-panel');
   if (!panel) return;
 
-  let html = '<div class="tp-title">Select Target Object</div>';
+  let html = '<div class="tp-title">Target Object</div>';
 
   // Mirror selector — three states (Prime / Large / Small).
   // Locked once a target is selected (target dictates the configuration).

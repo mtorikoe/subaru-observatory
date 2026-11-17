@@ -345,13 +345,6 @@ function _drawNavOverlay(ctx, W, H) {
   const raH  = (_cam.ra / 15).toFixed(2);
   const decS = (_cam.dec >= 0 ? '+' : '') + _cam.dec.toFixed(2);
   ctx.fillText(`RA ${raH}h  Dec ${decS}°   FOV ${(90/_cam.zoom).toFixed(1)}°`, 6, 14);
-
-  ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, H-22, W, 22);
-  ctx.fillStyle = 'rgba(220,220,220,0.75)';
-  ctx.font = '0.75em Times New Roman';
-  ctx.textAlign = 'center';
-  ctx.fillText('Drag to pan · Scroll to zoom · Click a target to select it · Or pick one from the left', W/2, H-7);
-  ctx.textAlign = 'left';
 }
 
 // ── Target label ───────────────────────────────────────
@@ -382,19 +375,6 @@ function _drawTargetLabel(ctx, W, H) {
     ctx.font = '0.75em Times New Roman';
     ctx.textAlign = 'right';
     ctx.fillText('(solar-system — moves across sky)', W - 10, 17);
-    ctx.textAlign = 'left';
-  }
-
-  // Instruction bar along the bottom edge, clear of the centred target
-  if (!_svObserved && !G.observationRunning) {
-    const msg = G.selectedInstruments.length === 0
-      ? 'Choose instruments, then click Observe  ·  Click the sky to deselect'
-      : 'Click Observe (or click the sky) to start observing';
-    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, H - 28, W, 28);
-    ctx.fillStyle = 'rgba(240,192,96,0.95)';
-    ctx.font = 'bold 0.92em Times New Roman';
-    ctx.textAlign = 'center';
-    ctx.fillText(msg, W/2, H - 9);
     ctx.textAlign = 'left';
   }
 
