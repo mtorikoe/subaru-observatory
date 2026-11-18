@@ -10,11 +10,18 @@
 
   <!-- ── Header ───────────────────────────────────────────── -->
   <header class="uh-header">
-    <a href="../index.html" class="uh-back-link">← Home</a>
+    <!-- Phones only: opens the target list, which becomes a slide-in menu -->
+    <button class="uh-menu-btn" id="targets-menu-btn" type="button"
+            aria-label="Target list" aria-controls="target-panel" aria-expanded="false"
+            onclick="toggleTargetMenu()">
+      <span class="uh-menu-icon" aria-hidden="true"><i></i><i></i><i></i></span>
+    </button>
+    <a href="../../index.html" class="uh-back-link">Home</a>
     <h1>Universe Hunting</h1>
     <div class="uh-header-right">
+      <!-- Step-by-step tour of the screen, in the order the game is played (js/guide.js) -->
+      <button class="uh-guide-btn" type="button" onclick="UHGuide.open()">Guide</button>
       <div class="uh-fontsize-ctrl" title="Text size">
-        <span class="uh-fontsize-label">Text:</span>
         <button data-size="sm" onclick="setFontSize('sm')">A</button>
         <button data-size="md" class="active" onclick="setFontSize('md')">A</button>
         <button data-size="lg" onclick="setFontSize('lg')">A</button>
@@ -27,6 +34,8 @@
   <div class="uh-body">
 
     <aside class="uh-left-col" id="target-panel"></aside>
+    <!-- Phones only: dims the game behind the open target menu; tap to close -->
+    <div class="uh-drawer-backdrop" onclick="closeTargetMenu()"></div>
 
     <div class="uh-divider-v" id="divider-left" title="Drag to resize"></div>
 
@@ -64,7 +73,13 @@
           <div class="v-divider" id="divider-mid" title="Drag to resize"></div>
 
           <div class="construction-wrap">
-            <div class="construction-header">Assembled telescope</div>
+            <div class="construction-header">
+              <span class="construction-title">Assembled telescope</span>
+              <!-- Folds this section away to give the instrument cards more room -->
+              <button class="construction-toggle" id="construction-toggle" type="button"
+                      aria-expanded="true" title="Hide the assembled telescope"
+                      onclick="toggleTelescopePanel()">›</button>
+            </div>
             <canvas id="construction-canvas"></canvas>
             <div class="uh-construction" id="construction-view">
               <span class="uh-construction-empty">No instruments selected</span>
@@ -98,6 +113,7 @@
   <script src="js/instruments.js"></script>
   <script src="js/minigames.js"></script>
   <script src="js/game.js"></script>
+  <script src="js/guide.js"></script>
 
 </body>
 </html>
