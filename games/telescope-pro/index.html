@@ -27,6 +27,8 @@
         <button data-size="lg" onclick="setFontSize('lg')">A</button>
       </div>
       <div id="score-display" class="uh-score-box">Score: 0 | Revealed: 0</div>
+      <!-- Firebase のサインイン/アウト。SDK か設定が無いときは JS が隠す -->
+      <button id="uh-auth-btn" class="uh-auth-btn" type="button" style="display:none">Sign in</button>
     </div>
   </header>
 
@@ -114,6 +116,10 @@
   <script src="js/minigames.js"></script>
   <script src="js/game.js"></script>
   <script src="js/guide.js"></script>
+
+  <!-- Firebase（任意）：設定は classic、SDK 利用は module。遮断/未設定でもゲームは動く -->
+  <script src="js/firebase-config.js"></script>
+  <script type="module" src="js/firebase-sync.js"></script>
 
 </body>
 </html>
