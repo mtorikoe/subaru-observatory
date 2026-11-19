@@ -76,11 +76,9 @@ html, body {
   display: inline-flex; align-items: center;
   padding: 6px 14px; border-radius: 3px;
   background: transparent; color: var(--muted);
-  border: 1px solid var(--border);
   text-decoration: none; cursor: pointer; line-height: 1.4;
   transition: border-color .15s, color .15s, background .15s;
 }
-.uh-back-link:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 
 
 /* ── Body ─────────────────────────────────────────────────── */
@@ -632,9 +630,6 @@ input[type=range].mg-slider {
   display: flex;
   align-items: center;
   gap: 2px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
   padding: 2px 6px 2px 8px;
 }
 .uh-fontsize-label {
@@ -811,11 +806,9 @@ input[type=range].mg-slider {
   display: inline-flex; align-items: center;
   padding: 6px 14px; border-radius: 3px;
   background: transparent; color: var(--muted);
-  border: 1px solid var(--border);
   text-decoration: none; cursor: pointer; line-height: 1.4;
   transition: border-color .15s, color .15s, background .15s;
 }
-.uh-guide-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 
 /* Firebase サインイン / サインアウトボタン（js/firebase-sync.js が表示制御）*/
 .uh-auth-btn {
@@ -823,12 +816,12 @@ input[type=range].mg-slider {
   display: inline-flex; align-items: center;
   padding: 6px 14px; border-radius: 3px;
   background: transparent; color: var(--muted);
-  border: 1px solid var(--border);
   text-decoration: none; cursor: pointer; line-height: 1.4;
   transition: border-color .15s, color .15s, background .15s;
   max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.uh-auth-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+/* <button> defaults to a UA border — remove it so the header buttons are flat */
+.uh-back-link, .uh-guide-btn, .uh-auth-btn { border: none; }
 
 /* Sign-in window (reuses the result-window .reward-* styles) */
 .uh-auth-box    { max-width: 360px; text-align: left; }
