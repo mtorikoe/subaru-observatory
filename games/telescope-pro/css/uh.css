@@ -72,16 +72,15 @@ html, body {
   font-weight: 600;
 }
 .uh-back-link {
-  font-size: 0.933em;
-  font-weight: 600;
-  color: var(--muted);
-  text-decoration: none;
+  font-family: inherit; font-size: 0.867em; font-weight: 700;
+  display: inline-flex; align-items: center;
+  padding: 6px 14px; border-radius: 3px;
+  background: transparent; color: var(--muted);
   border: 1px solid var(--border);
-  padding: 6px 14px;
-  border-radius: 3px;
-  transition: border-color .2s, color .2s;
+  text-decoration: none; cursor: pointer; line-height: 1.4;
+  transition: border-color .15s, color .15s, background .15s;
 }
-.uh-back-link:hover { border-color: var(--accent); color: var(--accent); }
+.uh-back-link:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
 
 
 /* ── Body ─────────────────────────────────────────────────── */
@@ -635,7 +634,7 @@ input[type=range].mg-slider {
   gap: 2px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 3px;
   padding: 2px 6px 2px 8px;
 }
 .uh-fontsize-label {
@@ -809,12 +808,47 @@ input[type=range].mg-slider {
 /* ── Guide button + step-by-step guide (js/guide.js) ──────── */
 .uh-guide-btn {
   font-family: inherit; font-size: 0.867em; font-weight: 700;
-  padding: 5px 14px;
-  background: var(--accent); color: #fff;
-  border: 1px solid var(--accent); border-radius: 3px;
-  cursor: pointer; transition: background .15s;
+  display: inline-flex; align-items: center;
+  padding: 6px 14px; border-radius: 3px;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+  text-decoration: none; cursor: pointer; line-height: 1.4;
+  transition: border-color .15s, color .15s, background .15s;
 }
-.uh-guide-btn:hover { background: #143f7a; border-color: #143f7a; }
+.uh-guide-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+
+/* Firebase サインイン / サインアウトボタン（js/firebase-sync.js が表示制御）*/
+.uh-auth-btn {
+  font-family: inherit; font-size: 0.867em; font-weight: 700;
+  display: inline-flex; align-items: center;
+  padding: 6px 14px; border-radius: 3px;
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+  text-decoration: none; cursor: pointer; line-height: 1.4;
+  transition: border-color .15s, color .15s, background .15s;
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.uh-auth-btn:hover { border-color: var(--accent); color: var(--accent); background: transparent; }
+
+/* Sign-in window (reuses the result-window .reward-* styles) */
+.uh-auth-box    { max-width: 360px; text-align: left; }
+.uh-auth-google {
+  width: 100%; padding: 10px; cursor: pointer;
+  border: 1px solid var(--border); border-radius: 3px;
+  background: #fff; color: #1b1b1f;
+  font-family: inherit; font-size: 0.9em; font-weight: 700;
+  transition: border-color .15s;
+}
+.uh-auth-google:hover { border-color: var(--accent); }
+.auth-or { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 0.75em; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.auth-input {
+  width: 100%; padding: 9px 10px; border-radius: 3px;
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  font-family: inherit; font-size: 0.9em;
+}
+.auth-input:focus { outline: none; border-color: var(--accent); }
+.auth-error { color: var(--danger); font-size: 0.8em; font-weight: 600; min-height: 1.1em; }
 
 /* The wrapper must let clicks fall through to the game; only the blocker and
    the card catch them. Without this, a click would hit the full-screen wrapper
@@ -933,6 +967,7 @@ body.targets-open .uh-menu-icon i:nth-child(3) { transform: translateY(-5.5px) r
   .uh-header h1 { font-size: 0.867em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .uh-back-link { flex-shrink: 0; padding: 5px 9px; font-size: 0.8em; }
   .uh-guide-btn { padding: 5px 9px; font-size: 0.8em; }
+  .uh-auth-btn  { padding: 5px 9px; font-size: 0.8em; max-width: 120px; }
   .uh-header-right { gap: 8px; }
   .uh-fontsize-ctrl { display: none; }
   .uh-score-box { font-size: 0.733em; white-space: nowrap; }

@@ -68,6 +68,8 @@ function triggerObservation() {
         G.revealedTargets.push(G.selectedTarget.id);
         G.score += result.perfect ? 100 : result.good ? 70 : 40;
         updateScoreDisplay();
+        // クラウド保存（ログイン済み & オンラインのときだけ実行される / js/firebase-sync.js）
+        if (window.UH_FB) window.UH_FB.saveProgress(window.UHProgress.get());
       }
       showRewardOverlay(result);
     } else {
@@ -84,6 +86,27 @@ function updateScoreDisplay() {
   const el = document.getElementById('score-display');
   if (el) el.textContent = `Score: ${G.score}  |  Revealed: ${G.revealedTargets.length}`;
 }
+
+// ── Firebase 連携への橋渡し ────────────────────────────────
+// js/firebase-sync.js は <script type="module"> で動くため、classic の
+// `const G` を直接は読めない。進捗のやり取りはこの window.UHProgress 経由だけ。
+window.UHProgress = {
+  // いまのセッションの進捗を取り出す（保存に使う）
+  get() { return { score: G.score, revealed: G.revealedTargets.slice() }; },
+  // クラウドから読んだ進捗をセッションへ反映（スコアは大きい方、Collection は和集合）
+  apply(data) {
+    if (!data) return;
+    if (typeof data.score === 'number' && data.score > G.score) G.score = data.score;
+    if (Array.isArray(data.revealed)) {
+      data.revealed.forEach(id => { if (!G.revealedTargets.includes(id)) G.revealedTargets.push(id); });
+    }
+    if (typeof updateScoreDisplay === 'function') updateScoreDisplay();
+    if (typeof renderTargetPanel  === 'function') renderTargetPanel();
+    if (typeof renderStarView     === 'function') renderStarView();
+    const colTab = document.getElementById('tab-collection');
+    if (colTab && colTab.style.display !== 'none' && typeof renderCollectionPanel === 'function') renderCollectionPanel();
+  },
+};
 
 // ── Reward overlay (success) ───────────────────────────────
 function showRewardOverlay(result) {
