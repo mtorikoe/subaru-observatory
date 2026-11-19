@@ -849,6 +849,10 @@ input[type=range].mg-slider {
 }
 .auth-input:focus { outline: none; border-color: var(--accent); }
 .auth-error { color: var(--danger); font-size: 0.8em; font-weight: 600; min-height: 1.1em; }
+/* Sign-in window only: clean dark dim instead of the washed white veil,
+   and a black title instead of the gold one. */
+#uh-auth-modal { background: rgba(7, 7, 11, 0.55); }
+#uh-auth-modal .reward-title { color: var(--text); }
 
 /* The wrapper must let clicks fall through to the game; only the blocker and
    the card catch them. Without this, a click would hit the full-screen wrapper
