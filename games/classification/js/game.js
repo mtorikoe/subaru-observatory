@@ -147,7 +147,6 @@
     res.className = 'cl-result show ' + (allRight ? 'win' : 'lose');
     res.innerHTML = `
       <div class="cl-result-card">
-        <div class="cl-result-badge">${allRight ? '✦' : '✕'}</div>
         <div class="cl-result-head">${allRight ? 'Correct — picture collected!' : 'Not quite'}</div>
         <div class="cl-result-name">${obj.name}</div>
         <div class="cl-answers">
@@ -182,48 +181,76 @@
   // ── Collection overlay ──
   function openCollection() {
     const have = window.SubaruCollection.get('classification');
-    const byId = Object.fromEntries(CL_CATALOG.map(o => [o.id, o]));
 
     const owned = CL_CATALOG.filter(o => have.includes(o.id));
     const cards = CL_CATALOG.map(o => {
       const got = have.includes(o.id);
-      return `<figure class="cl-coll-card ${got ? '' : 'locked'}">
-        <div class="cl-coll-img" style="${got ? `background-image:url('${o.img}')` : ''}">${got ? '' : '🔒'}</div>
-        <figcaption>${got ? o.name : '???'}</figcaption>
+      if (got) {
+        return `<figure class="cl-coll-card" title="${o.name} — click to expand"
+                        onclick="CLGame.openDetails('${o.id}')">
+          <div class="cl-coll-img" style="background-image:url('${o.img}')"></div>
+          <div class="cl-coll-name">${o.name}</div>
+        </figure>`;
+      }
+      return `<figure class="cl-coll-card locked" title="Not yet collected">
+        <div class="cl-coll-img"></div>
+        <div class="cl-coll-name">???</div>
       </figure>`;
     }).join('');
-
-    // Universe Hunting collection (filled once that game's auth is reworked)
-    const uh = window.SubaruCollection.get('universeHunting');
-    const uhSection = `
-      <div class="cl-coll-section-head">Universe Hunting ${uh.length ? `— ${uh.length}` : ''}</div>
-      ${uh.length
-        ? `<div class="cl-coll-grid">${uh.map(id => `<figure class="cl-coll-card"><div class="cl-coll-img cl-coll-text">${id}</div></figure>`).join('')}</div>`
-        : `<p class="cl-coll-empty">Pictures you collect in Universe Hunting will appear here once accounts are linked.</p>`}`;
 
     el('cl-collection').innerHTML = `
       <div class="cl-coll-box">
         <button class="cl-coll-close" type="button" onclick="CLGame.closeCollection()" title="Close">✕</button>
-        <div class="cl-coll-title">My Collection</div>
-        <div class="cl-coll-section-head">Classification — ${owned.length} / ${CL_CATALOG.length}</div>
+        <div class="cl-coll-title">My Collection <span class="cl-coll-count">${owned.length} / ${CL_CATALOG.length}</span></div>
         <div class="cl-coll-grid">${cards}</div>
-        ${uhSection}
       </div>`;
     el('cl-collection').classList.add('show');
   }
   function closeCollection() { el('cl-collection').classList.remove('show'); }
+
+  // ── Expanded picture ──
+  function fact(label, val) {
+    return `<div class="cl-fact"><span class="cl-fact-label">${label}</span><span class="cl-fact-val">${val}</span></div>`;
+  }
+  function openDetails(id) {
+    const o = CL_CATALOG.find(x => x.id === id);
+    if (!o || !window.SubaruCollection.has(id, 'classification')) return;
+    const d = el('cl-details');
+    d.innerHTML = `
+      <div class="cl-details-box">
+        <button class="cl-details-close" type="button" onclick="CLGame.closeDetails()" title="Close">✕</button>
+        <img class="cl-details-img" src="${o.img}" alt="${o.name}">
+        <div class="cl-details-body">
+          <div class="cl-details-name">${o.name}</div>
+          <div class="cl-details-facts">
+            ${fact('Image', o.band)}
+            ${fact('Object', CL_TYPES[o.type])}
+            ${fact('Instrument', CL_INSTRUMENTS[o.instr])}
+          </div>
+        </div>
+      </div>`;
+    d.classList.add('show');
+  }
+  function closeDetails() { el('cl-details').classList.remove('show'); }
 
   // ── Public API ──
   window.CLGame = {
     next: startRound,
     openCollection,
     closeCollection,
+    openDetails,
+    closeDetails,
   };
 
   // ── Boot ──
   document.addEventListener('DOMContentLoaded', () => {
     updateScore();
     startRound();
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCollection(); });
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      // Close the top-most overlay first
+      if (el('cl-details').classList.contains('show')) closeDetails();
+      else closeCollection();
+    });
   });
 })();
