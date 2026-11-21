@@ -443,36 +443,45 @@ html, body {
 .instr-card-year  { font-size: 0.733em; color: var(--muted); letter-spacing: .06em; font-weight: 600; }
 
 /* ── Target panel (left column) ───────────────────────────── */
-.tp-title { font-size: 0.8em; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 10px; padding: 0 4px; }
-.tp-mirror-row   { display: flex; align-items: center; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
-.tp-mirror-label { font-size: 0.8em; color: var(--muted); font-weight: 600; }
+/* Left target list — grouped by spacing + type, not boxes, fills or badges.
+   Hierarchy: section label < category headings > target rows; state is shown
+   by colour/weight, counts are right-aligned tabular numbers. */
+.tp-title { font-size: 0.72em; font-weight: 700; text-transform: uppercase; letter-spacing: .14em; color: var(--muted); margin: 2px 4px 16px; }
+
+.tp-mirror-row   { display: flex; align-items: center; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+.tp-mirror-label { font-size: 0.75em; color: var(--muted); font-weight: 600; margin-right: 2px; }
 .tp-mirror-btn {
-  font-size: 0.733em; font-weight: 600; padding: 4px 10px; background: transparent;
+  font-size: 0.72em; font-weight: 600; padding: 4px 9px; background: transparent;
   border: 1px solid var(--border); color: var(--muted); border-radius: 3px;
-  cursor: pointer; font-family: inherit; transition: all .15s;
+  cursor: pointer; font-family: inherit; transition: color .15s, border-color .15s, background .15s;
 }
 .tp-mirror-btn.active             { background: var(--accent); color: #fff; border-color: var(--accent); }
 .tp-mirror-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
 
+/* Category heading: the group label. Open/hover = colour + weight, no fill. */
 .tp-category {
-  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
-  font-size: 0.867em; font-weight: 600; cursor: pointer; border-radius: 4px; color: var(--text);
-  transition: background .12s; user-select: none;
+  display: flex; align-items: baseline; gap: 8px; padding: 7px 4px;
+  font-size: 0.9em; font-weight: 600; cursor: pointer; color: var(--text);
+  user-select: none; transition: color .12s;
 }
-.tp-category:hover { background: var(--deep); }
-.tp-category.open  { background: var(--panelb); color: var(--accent); }
-.tp-cat-arrow      { font-size: 0.733em; color: var(--muted); }
-.tp-cat-count      { margin-left: auto; font-size: 0.733em; color: var(--muted); background: var(--deep); padding: 2px 7px; border-radius: 4px; }
-.tp-targets        { padding-left: 16px; }
+.tp-category + .tp-category { margin-top: 2px; }
+.tp-category:hover { color: var(--accent); }
+.tp-category.open  { color: var(--accent); }
+.tp-cat-arrow      { font-size: 0.7em; color: var(--muted); width: 0.9em; flex-shrink: 0; }
+.tp-category.open .tp-cat-arrow { color: var(--accent); }
+.tp-cat-count      { margin-left: auto; font-size: 0.75em; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Targets: indented under their category (spacing = grouping). */
+.tp-targets        { padding: 2px 0 12px 18px; }
 .tp-target {
-  display: flex; align-items: center; padding: 5px 8px; font-size: 0.867em;
-  cursor: pointer; border-radius: 4px; color: var(--muted); transition: all .12s; gap: 5px;
+  display: flex; align-items: center; padding: 5px 4px; font-size: 0.85em;
+  cursor: pointer; color: var(--muted); transition: color .12s; gap: 6px;
 }
-.tp-target:hover    { background: var(--deep); color: var(--text); }
-.tp-target.selected { background: var(--panelb); color: var(--accent); font-weight: 600; }
+.tp-target:hover    { color: var(--text); }
+.tp-target.selected { color: var(--accent); font-weight: 700; }
 .tp-target.revealed { color: var(--success); }
 .tp-target-name     { flex: 1; }
-.tp-target-badge    { font-size: 0.733em; color: var(--success); font-weight: 700; }
+.tp-target-badge    { font-size: 0.75em; color: var(--success); font-weight: 700; }
 
 /* ── Tooltip ──────────────────────────────────────────────── */
 #uh-tooltip {
