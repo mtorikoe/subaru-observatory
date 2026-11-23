@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Classification — Subaru Observatory</title>
+  <link rel="stylesheet" href="css/classify.css">
+</head>
+<body>
+
+  <!-- Full-screen background photo of the current object -->
+  <div class="cl-stage" id="cl-stage"></div>
+  <div class="cl-scrim"></div>
+
+  <!-- ── Header ─────────────────────────────────────────── -->
+  <header class="cl-header">
+    <a href="../../index.html" class="cl-home">‹ Home</a>
+    <h1 class="cl-logo">Classification</h1>
+    <div class="cl-header-right">
+      <span id="cl-score" class="cl-score">Collected: 0</span>
+      <button class="cl-chip" type="button" onclick="CLGame.openCollection()">Collection</button>
+    </div>
+  </header>
+
+  <!-- ── Quiz (bottom of screen) ────────────────────────── -->
+  <section class="cl-quiz show" id="cl-quiz">
+    <div class="cl-quiz-top">
+      <span class="cl-step" id="cl-step">Question 1 of 3</span>
+      <span class="cl-dots" id="cl-dots"></span>
+    </div>
+    <p class="cl-prompt" id="cl-prompt">…</p>
+    <div class="cl-options" id="cl-options"></div>
+  </section>
+
+  <!-- ── Round result / award ───────────────────────────── -->
+  <div class="cl-result" id="cl-result"></div>
+
+  <!-- ── Collection overlay ─────────────────────────────── -->
+  <div class="cl-collection" id="cl-collection" onclick="if(event.target===this)CLGame.closeCollection()"></div>
+
+  <!-- ── Expanded picture overlay ───────────────────────── -->
+  <div class="cl-details" id="cl-details" onclick="if(event.target===this)CLGame.closeDetails()"></div>
+
+  <!-- ── Scripts ────────────────────────────────────────── -->
+  <script src="js/collection.js"></script>
+  <script src="js/catalog.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
