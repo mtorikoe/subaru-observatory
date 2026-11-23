@@ -167,7 +167,7 @@
 
   function answerRow(label, right, correctVal) {
     return `<div class="cl-answer-row ${right ? 'good' : 'bad'}">
-      <span class="cl-answer-icon">${right ? '✓' : '✕'}</span>
+      <span class="cl-answer-status">${right ? 'Correct' : 'Wrong'}</span>
       <span class="cl-answer-label">${label}</span>
       <span class="cl-answer-val">${correctVal}</span>
     </div>`;
