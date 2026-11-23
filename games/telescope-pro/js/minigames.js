@@ -330,10 +330,10 @@ function _game_hsc() {
   _setTeaches('Hyper Suprime-Cam is the upgraded successor of Suprime-Cam. One shot covers 1.77 square degrees — about 9 full Moons, roughly 7× more sky than Suprime-Cam.');
 
   const S = 170;          // each option canvas is S×S px
-  const moonR = 15;       // one full Moon — identical in both fields (same scale!)
+  const moonR = 18;       // one full Moon — identical in both fields (same scale!)
   const options = [
-    { id:'suprime', label:'Suprime-Cam', detail:'34′×27′ — about 1 full Moon', fieldR: moonR + 6, moons: 1 },
-    { id:'hsc',     label:'Hyper Suprime-Cam', detail:'1.5° wide — about 9 full Moons', fieldR: 58, moons: 9 },
+    { id:'suprime', label:'Suprime-Cam', detail:'34′×27′ — about 1 full Moon', fieldR: moonR + 2, moons: 1 },
+    { id:'hsc',     label:'Hyper Suprime-Cam', detail:'1.5° wide — about 9 full Moons', fieldR: 54, moons: 9 },
   ];
   if (Math.random() < 0.5) options.reverse();   // don't always put the answer on the same side
 
@@ -378,16 +378,20 @@ function _game_hsc() {
       ctx.fillStyle = `rgba(255,255,255,${0.1 + ((i*73)%10)*0.04})`;
       ctx.fillRect((i*137) % S, (i*97) % S, 1, 1);
     }
-    // Field of view
+    // Field of view (dashed, like the quiz)
     ctx.beginPath(); ctx.arc(c, c, o.fieldR, 0, Math.PI*2);
     ctx.fillStyle = 'rgba(255,255,255,0.06)'; ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2; ctx.stroke();
-    // Moons: one in the centre, the rest in a ring around it
+    ctx.setLineDash([3, 2]);
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.setLineDash([]);
+    // Moons: one centred, the rest in a ring sized to fill the field so the
+    // discs overlap a little — the same view as the quiz.
     drawMoon(ctx, c, c, moonR);
     const ring = o.moons - 1;
+    const ringR = o.fieldR - moonR;
     for (let k = 0; k < ring; k++) {
       const a = (k / ring) * Math.PI * 2 - Math.PI/2;
-      drawMoon(ctx, c + Math.cos(a) * 39, c + Math.sin(a) * 39, moonR);
+      drawMoon(ctx, c + Math.cos(a) * ringR, c + Math.sin(a) * ringR, moonR);
     }
   }
 

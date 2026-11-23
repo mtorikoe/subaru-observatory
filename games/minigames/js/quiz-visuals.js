@@ -123,7 +123,6 @@ const QV = (function () {
   function moon(x, y, r) {
     const id = 'qvc' + (++uid);
     return `<clipPath id="${id}"><circle cx="${x}" cy="${y}" r="${r}"/></clipPath>` +
-           `<circle cx="${x}" cy="${y}" r="${r}" fill="#cfc8b8"/>` +
            `<image href="${ASSETS}minigame/moon.png" clip-path="url(#${id})" x="${x - r}" y="${y - r}" width="${2 * r}" height="${2 * r}" preserveAspectRatio="xMidYMid slice"/>`;
   }
 
@@ -154,11 +153,19 @@ const QV = (function () {
   const draw = {
 
     moons(n) {
-      const mr = 9;
+      const mr = 15;        // one full Moon — same scale in both choices
+      // Suprime-Cam: a single Moon that fills its narrow field.
       if (n <= 1)
-        return svg(`<circle cx="60" cy="60" r="15" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="3 2"/>` + moon(60, 60, mr));
-      let m = '';
-      for (let i = 0; i < 9; i++) m += moon(36 + (i % 3) * 24, 36 + Math.floor(i / 3) * 24, mr);
+        return svg(`<circle cx="60" cy="60" r="${mr}" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="3 2"/>` + moon(60, 60, mr));
+      // HSC's wider field: one Moon centred, eight in a ring around it, sized
+      // so the discs overlap a little and fill the field circle — the same
+      // view as the interactive HSC mini game.
+      const ring = 30;
+      let m = moon(60, 60, mr);
+      for (let i = 0; i < 8; i++) {
+        const a = i * Math.PI / 4 - Math.PI / 2;
+        m += moon(60 + ring * Math.cos(a), 60 + ring * Math.sin(a), mr);
+      }
       return svg(`<circle cx="60" cy="60" r="46" fill="none" stroke="#fff" stroke-width="1" stroke-dasharray="3 2"/>` + m);
     },
 
