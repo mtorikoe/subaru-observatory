@@ -10,9 +10,10 @@ The background is the Mauna Kea night photo (`assets/training-bg.jpg`): domes on
 a dark ridge under the Milky Way. The photo stays fixed and ambient; the sky is
 dark enough that content reads over it.
 
-Reading happens on **liquid-glass plates**: translucent panels that blur and
-saturate the sky behind them, carry a bright specular top edge, and float on a
-soft shadow. Every corner is **square**. The whole surface is monochrome.
+Only the end-of-lesson **test** sits on a liquid-glass plate (translucent,
+blurred, square, with a specular top edge). Everything else — headings, photos,
+captions, the "Remember" note, the finish — floats directly on the sky with no
+plate behind it. The whole surface is monochrome.
 
 ### Guardrails (explicit)
 - No purple→blue gradients; no decorative gradient accents.
