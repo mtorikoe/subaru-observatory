@@ -1,0 +1,260 @@
+/* ============================================================
+   training.css — "Space Training"
+   Mobile-first. Photo-grounded (Mauna Kea night sky).
+   Surfaces are liquid glass; every corner is square.
+   Hierarchy comes from type, weight, spacing and position —
+   not from colour. See DESIGN.md.
+   ============================================================ */
+
+:root {
+  /* one neutral text ramp — no chromatic accents */
+  --star:  #f3f6fa;   /* primary text */
+  --mist:  #aeb8c6;   /* secondary text */
+  --dim:   #7b8694;   /* captions / meta */
+
+  /* liquid-glass surface */
+  --glass-sheen: linear-gradient(135deg,
+                   rgba(255,255,255,.14) 0%,
+                   rgba(255,255,255,.03) 45%,
+                   rgba(255,255,255,.08) 100%);
+  --glass-tint:  rgba(10,14,20,.44);
+  --glass-edge:  rgba(255,255,255,.18);
+  --glass-blur:  blur(22px) saturate(180%);
+  --glass-light: inset 0 1px 0 rgba(255,255,255,.40),
+                 inset 0 -1px 0 rgba(255,255,255,.07),
+                 0 20px 50px rgba(0,0,0,.42);
+
+  --serif: 'Fraunces', Georgia, 'Times New Roman', serif;
+  --sans:  'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --gutter: 20px;
+  --maxw: 1040px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  min-height: 100vh;
+  font-family: var(--sans);
+  color: var(--star);
+  line-height: 1.6;
+  background-color: #06090e;
+  -webkit-font-smoothing: antialiased;
+}
+/* Fixed photo layer + scrim (more reliable on mobile than fixed bg) */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: url('../../../assets/training-bg.jpg') center bottom / cover no-repeat;
+}
+body::after {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(6,9,14,.34) 0%, rgba(6,9,14,.58) 42%, rgba(6,9,14,.82) 100%);
+}
+.t-nav, .t-hero, .t-wrap, .t-foot { position: relative; z-index: 1; }
+
+a:focus-visible, button:focus-visible {
+  outline: 2px solid var(--star); outline-offset: 3px;
+}
+
+/* ── Shared liquid-glass plate (no outline) ──────────────── */
+.t-light-card, .t-obj, .t-inst, .t-quiz {
+  background: var(--glass-sheen), var(--glass-tint);
+  border: 0;
+  border-radius: 0;
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-light);
+}
+
+/* ── Top bar ─────────────────────────────────────────────── */
+.t-nav {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px var(--gutter);
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(8,11,17,.52);
+  backdrop-filter: blur(18px) saturate(160%); -webkit-backdrop-filter: blur(18px) saturate(160%);
+  border-bottom: 0;
+}
+.t-home { color: var(--mist); text-decoration: none; font-size: 15px; font-weight: 600; }
+.t-home:hover { color: var(--star); }
+.t-nav-title {
+  font-family: var(--serif); font-weight: 500; font-size: 17px; margin-right: auto;
+}
+.t-nav-links { display: none; gap: 2px; }
+.t-nav-links a {
+  color: var(--mist); text-decoration: none; font-size: 13px; font-weight: 600;
+  padding: 6px 12px;
+}
+.t-nav-links a:hover { color: var(--star); background: rgba(255,255,255,.07); }
+
+/* ── Hero ────────────────────────────────────────────────── */
+.t-hero { max-width: var(--maxw); margin: 0 auto; padding: 64px var(--gutter) 44px; }
+.t-hero h1 {
+  font-family: var(--serif); font-weight: 500;
+  font-size: clamp(34px, 8.5vw, 58px); line-height: 1.04; letter-spacing: -0.01em;
+  max-width: 14ch;
+}
+
+/* ── Glass buttons ───────────────────────────────────────── */
+.t-start, .t-play {
+  display: inline-block; font-family: var(--sans); font-weight: 700; color: var(--star);
+  text-decoration: none; cursor: pointer;
+  background: linear-gradient(135deg, rgba(255,255,255,.26), rgba(255,255,255,.07) 60%, rgba(255,255,255,.16));
+  border: 0; border-radius: 0;
+  backdrop-filter: blur(16px) saturate(170%); -webkit-backdrop-filter: blur(16px) saturate(170%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 12px 30px rgba(0,0,0,.4);
+  transition: transform .16s ease, background .16s ease;
+}
+.t-start { margin-top: 30px; padding: 13px 26px; font-size: 16px; }
+.t-start:hover, .t-play:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, rgba(255,255,255,.34), rgba(255,255,255,.12) 60%, rgba(255,255,255,.22));
+}
+
+/* ── Reading column ──────────────────────────────────────── */
+.t-wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 var(--gutter); }
+
+/* ── Chapter ─────────────────────────────────────────────── */
+.t-chapter { padding-top: 48px; }
+.t-chapter-head { display: flex; align-items: center; gap: 14px; }
+.t-num {
+  flex: 0 0 auto;
+  font-family: var(--serif); font-weight: 600; color: var(--star);
+  font-size: clamp(26px, 5vw, 38px); line-height: 1;
+}
+.t-chapter-head h2 {
+  font-family: var(--serif); font-weight: 500; letter-spacing: -0.01em;
+  font-size: clamp(25px, 5vw, 36px);
+}
+.t-lead { color: var(--mist); font-size: 16px; margin: 14px 0 22px; max-width: 60ch; }
+
+/* ── Lesson 1 : light ────────────────────────────────────── */
+.t-light { display: flex; flex-direction: column; gap: 16px; }
+.t-light-card { padding: 20px; position: relative; overflow: hidden; }
+/* emphasis: a short heavy eyebrow, wide-tracked, sitting above the title */
+.t-eye {
+  font-size: 12px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase;
+  color: var(--star);
+}
+.t-light-card h3 { font-family: var(--serif); font-weight: 500; font-size: 25px; margin: 7px 0 11px; }
+.t-light-card p { color: var(--mist); font-size: 16px; }
+
+.t-photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 18px 0 16px; }
+.t-photo { border-radius: 0; overflow: hidden; background: rgba(0,0,0,.25); }
+.t-photo img { display: block; width: 100%; height: 118px; object-fit: cover; }
+.t-photo span { display: block; padding: 7px 10px; font-size: 12px; color: var(--mist); background: rgba(0,0,0,.35); }
+
+.t-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.t-chip-label { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); margin-right: 2px; }
+.t-chip {
+  font-size: 12.5px; font-weight: 700; padding: 5px 11px; border-radius: 0; color: var(--star);
+  background: rgba(255,255,255,.1); border: 0;
+}
+
+/* floats as plain text, no box */
+.t-takeaway {
+  margin-top: 20px; padding: 2px 0; font-size: 16px; color: var(--mist); max-width: 62ch;
+}
+.t-takeaway b { color: var(--star); font-weight: 700; }
+
+/* ── End-of-lesson check (one question) ──────────────────── */
+.t-quiz { margin-top: 20px; padding: 20px; }
+.t-quiz-eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.t-quiz-q { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 8px 0 16px; }
+.t-quiz-opts { display: flex; flex-direction: column; gap: 10px; }
+.t-quiz-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; text-align: left; cursor: pointer; font-family: var(--sans);
+  font-size: 16px; font-weight: 600; color: var(--star);
+  padding: 13px 16px; border-radius: 0;
+  background: rgba(255,255,255,.07); border: 0;
+  transition: background .15s, transform .12s;
+}
+.t-quiz-opt:hover:not(:disabled) { background: rgba(255,255,255,.13); transform: translateY(-1px); }
+.t-quiz-opt:disabled { cursor: default; }
+.t-quiz-mark { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--mist); }
+/* correct / wrong shown by weight + fill + a text tag, not colour */
+.t-quiz-opt.is-correct { background: rgba(255,255,255,.26); font-weight: 700; }
+.t-quiz-opt.is-wrong { opacity: .48; }
+.t-quiz-fb { margin-top: 14px; font-size: 15px; font-weight: 600; color: var(--star); min-height: 1.1em; opacity: 0; transition: opacity .2s; }
+.t-quiz-fb.show { opacity: 1; }
+
+/* ── Lesson 2 : objects ──────────────────────────────────── */
+.t-objects { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.t-obj { overflow: hidden; transition: transform .16s ease; }
+.t-obj:hover { transform: translateY(-2px); }
+.t-obj img { display: block; width: 100%; height: 160px; object-fit: cover; background: rgba(0,0,0,.25); }
+.t-obj-body { padding: 14px 16px 16px; }
+.t-obj-body h3 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin-bottom: 5px; }
+.t-obj-body p { font-size: 14.5px; color: var(--mist); line-height: 1.55; }
+
+/* ── Lesson 3 : instruments ──────────────────────────────── */
+.t-insts { display: flex; flex-direction: column; gap: 16px; }
+.t-inst { display: grid; grid-template-columns: 1fr; gap: 14px; padding: 16px; }
+.t-inst-photo { border-radius: 0; overflow: hidden; background: rgba(0,0,0,.25); }
+.t-inst-photo img { display: block; width: 100%; height: 170px; object-fit: cover; }
+.t-inst-main h3 {
+  font-family: var(--serif); font-weight: 500; font-size: 22px;
+  display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+}
+.t-inst-full { font-family: var(--sans); font-size: 13px; color: var(--dim); font-weight: 400; }
+.t-inst-main p { color: var(--mist); font-size: 15.5px; margin-top: 8px; }
+/* band: monochrome glass label; the word itself carries the meaning */
+/* label only — no box; the word carries the meaning */
+.t-band {
+  font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--mist);
+  padding: 0;
+}
+.t-inst-eg { border-radius: 0; overflow: hidden; background: rgba(0,0,0,.25); }
+.t-inst-eg .eg-tag {
+  display: block; padding: 8px 10px 0; font-size: 10px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--dim); font-weight: 700;
+}
+.t-inst-eg img { display: block; width: 100%; height: 120px; object-fit: cover; margin-top: 6px; }
+.t-inst-eg span { display: block; padding: 6px 10px 9px; font-size: 12px; color: var(--mist); }
+
+/* ── Finish (floats as text, no box) ─────────────────────── */
+.t-finish { text-align: center; margin: 60px 0 48px; padding: 8px 0; }
+.t-finish h2 { font-family: var(--serif); font-weight: 500; font-size: clamp(25px, 5vw, 34px); }
+.t-finish p { color: var(--mist); margin: 12px auto 0; max-width: 48ch; font-size: 16px; }
+.t-play { margin-top: 26px; padding: 15px 30px; font-size: 17px; }
+
+.t-foot {
+  text-align: center; padding: 22px var(--gutter);
+  font-size: 12.5px; color: var(--dim);
+}
+
+/* ════ ≥640px : tablets ════ */
+@media (min-width: 640px) {
+  :root { --gutter: 28px; }
+  .t-nav-links { display: flex; }
+  .t-hero { padding-top: 76px; padding-bottom: 52px; }
+  .t-lead { font-size: 17px; margin-left: 56px; }
+  .t-objects { grid-template-columns: 1fr 1fr; gap: 18px; }
+  .t-inst { grid-template-columns: 190px 1fr; gap: 18px; align-items: center; padding: 18px; }
+  .t-inst-main { align-self: center; }
+  .t-inst-eg { grid-column: 1 / -1; display: grid; grid-template-columns: auto 1fr; align-items: center; }
+  .t-inst-eg .eg-tag { padding: 0 12px; }
+  .t-inst-eg img { width: 150px; height: 92px; margin-top: 0; }
+}
+
+/* ════ ≥960px : desktop ════ */
+@media (min-width: 960px) {
+  .t-chapter { padding-top: 72px; }
+  .t-light { flex-direction: row; }
+  .t-light > * { flex: 1 1 0; }
+  .t-objects { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+  .t-inst { grid-template-columns: 200px 1fr 190px; }
+  .t-inst-eg { grid-column: auto; display: block; }
+  .t-inst-eg .eg-tag { padding: 8px 10px 0; }
+  .t-inst-eg img { width: 100%; height: 108px; margin-top: 6px; }
+}
+
+/* ── Motion: one hero entrance; respect reduced-motion ──── */
+@media (prefers-reduced-motion: no-preference) {
+  .t-hero > * { opacity: 0; transform: translateY(14px); animation: t-rise .6s ease forwards; }
+  .t-hero h1 { animation-delay: .06s; }
+  .t-hero .t-start { animation-delay: .18s; }
+}
+@keyframes t-rise { to { opacity: 1; transform: none; } }
